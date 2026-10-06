@@ -275,7 +275,7 @@ body.createHull({
 
 | material / event option | default       | description                                                      |
 | ----------------------- | ------------- | ---------------------------------------------------------------- |
-| `density`               | `1`           | mass per volume; `0` makes a massless shape                      |
+| `density`               | `1000`        | mass per volume (water); `0` makes a massless shape              |
 | `friction`              | Box3D default | Coulomb friction                                                 |
 | `restitution`           | `0`           | bounciness                                                       |
 | `rollingResistance`     | `0`           | slows rolling spheres and capsules                               |
@@ -283,7 +283,7 @@ body.createHull({
 | `userMaterialId`        | `0`           | your material id, reported nowhere yet but stored                |
 | `isSensor`              | `false`       | detect overlaps without collision response                       |
 | `enableSensorEvents`    | `false`       | let this shape be seen by sensors / report visitors if it is one |
-| `enableContactEvents`   | `true`        | report begin / end touch events                                  |
+| `enableContactEvents`   | `false`       | report begin / end touch events                                  |
 | `enableHitEvents`       | `false`       | report impacts above `hitEventThreshold`                         |
 | `invokeContactCreation` | Box3D default | create contacts immediately for static shapes                    |
 | `updateBodyMass`        | `true`        | recompute the body mass after adding the shape                   |
@@ -384,7 +384,7 @@ sensors.begin; // [{ sensorUserData, visitorUserData }]
 sensors.end; // [{ sensorUserData, visitorUserData }]  (null when the shape was destroyed)
 ```
 
-Body move events are always on. Contact begin / end events need `enableContactEvents` on at least one of the two shapes (on by default), hit events need `enableHitEvents` and an approach speed above the world's `hitEventThreshold`, and sensor events need a shape created with `isSensor: true` plus `enableSensorEvents: true` on the visitors you want it to notice.
+Body move events are always on. Contact begin / end events need `enableContactEvents` on at least one of the two shapes, hit events need `enableHitEvents` and an approach speed above the world's `hitEventThreshold`, and sensor events need a shape created with `isSensor: true` plus `enableSensorEvents: true` on the visitors you want it to notice.
 
 ### Memory
 
