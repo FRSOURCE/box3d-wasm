@@ -14,8 +14,11 @@
 export default async (options) => {
   const canThread =
     typeof SharedArrayBuffer !== 'undefined' &&
-    (typeof globalThis.crossOriginIsolated === 'undefined' || globalThis.crossOriginIsolated);
+    (typeof globalThis.crossOriginIsolated === 'undefined' ||
+      globalThis.crossOriginIsolated);
 
-  const flavour = canThread ? await import('./box3d.deluxe.mjs') : await import('./box3d.mjs');
+  const flavour = canThread
+    ? await import('./box3d.deluxe.mjs')
+    : await import('./box3d.mjs');
   return await flavour.default(options);
 };

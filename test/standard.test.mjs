@@ -35,10 +35,16 @@ test('world creation, gravity, destroy', () => {
 test('dynamic box falls onto static ground and settles', () => {
   const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 } });
 
-  const ground = world.createBody({ type: 'static', position: { x: 0, y: -0.5, z: 0 } });
+  const ground = world.createBody({
+    type: 'static',
+    position: { x: 0, y: -0.5, z: 0 },
+  });
   ground.createBox({ halfExtents: { x: 20, y: 0.5, z: 20 } });
 
-  const box = world.createBody({ type: 'dynamic', position: { x: 0, y: 5, z: 0 } });
+  const box = world.createBody({
+    type: 'dynamic',
+    position: { x: 0, y: 5, z: 0 },
+  });
   box.createBox({ halfExtents: { x: 0.5, y: 0.5, z: 0.5 }, density: 1 });
   assert.ok(Math.abs(box.getMass() - 1) < 1e-5);
 
@@ -55,10 +61,16 @@ test('dynamic box falls onto static ground and settles', () => {
 test('sphere with restitution bounces', () => {
   const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 } });
 
-  const ground = world.createBody({ type: 'static', position: { x: 0, y: -0.5, z: 0 } });
+  const ground = world.createBody({
+    type: 'static',
+    position: { x: 0, y: -0.5, z: 0 },
+  });
   ground.createBox({ halfExtents: { x: 20, y: 0.5, z: 20 }, restitution: 0.8 });
 
-  const ball = world.createBody({ type: 'dynamic', position: { x: 0, y: 4, z: 0 } });
+  const ball = world.createBody({
+    type: 'dynamic',
+    position: { x: 0, y: 4, z: 0 },
+  });
   ball.createSphere({ radius: 0.5, density: 1, restitution: 0.8 });
 
   let touchedGround = false;
@@ -74,7 +86,10 @@ test('sphere with restitution bounces', () => {
     }
   }
   assert.ok(touchedGround, 'ball should reach the ground');
-  assert.ok(bounceHeight > 1.0, `ball should bounce back up, peaked at ${bounceHeight}`);
+  assert.ok(
+    bounceHeight > 1.0,
+    `ball should bounce back up, peaked at ${bounceHeight}`,
+  );
 
   world.destroy();
   world.delete();
@@ -83,13 +98,23 @@ test('sphere with restitution bounces', () => {
 test('box stack settles at expected heights', () => {
   const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 } });
 
-  const ground = world.createBody({ type: 'static', position: { x: 0, y: -0.5, z: 0 } });
+  const ground = world.createBody({
+    type: 'static',
+    position: { x: 0, y: -0.5, z: 0 },
+  });
   ground.createBox({ halfExtents: { x: 20, y: 0.5, z: 20 } });
 
   const boxes = [];
   for (let i = 0; i < 5; i++) {
-    const body = world.createBody({ type: 'dynamic', position: { x: 0, y: 0.6 + i * 1.05, z: 0 } });
-    body.createBox({ halfExtents: { x: 0.5, y: 0.5, z: 0.5 }, density: 1, friction: 0.6 });
+    const body = world.createBody({
+      type: 'dynamic',
+      position: { x: 0, y: 0.6 + i * 1.05, z: 0 },
+    });
+    body.createBox({
+      halfExtents: { x: 0.5, y: 0.5, z: 0.5 },
+      density: 1,
+      friction: 0.6,
+    });
     boxes.push(body);
   }
 
@@ -98,7 +123,10 @@ test('box stack settles at expected heights', () => {
   for (let i = 0; i < 5; i++) {
     const y = boxes[i].getPosition().y;
     const expected = 0.5 + i;
-    assert.ok(Math.abs(y - expected) < 0.05, `box ${i} expected y near ${expected}, got ${y}`);
+    assert.ok(
+      Math.abs(y - expected) < 0.05,
+      `box ${i} expected y near ${expected}, got ${y}`,
+    );
   }
 
   world.destroy();
@@ -108,14 +136,27 @@ test('box stack settles at expected heights', () => {
 test('capsule and hull shapes simulate', () => {
   const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 } });
 
-  const ground = world.createBody({ type: 'static', position: { x: 0, y: -0.5, z: 0 } });
+  const ground = world.createBody({
+    type: 'static',
+    position: { x: 0, y: -0.5, z: 0 },
+  });
   ground.createBox({ halfExtents: { x: 20, y: 0.5, z: 20 } });
 
-  const capsuleBody = world.createBody({ type: 'dynamic', position: { x: -3, y: 3, z: 0 } });
-  const capsule = capsuleBody.createCapsule({ height: 1, radius: 0.4, density: 1 });
+  const capsuleBody = world.createBody({
+    type: 'dynamic',
+    position: { x: -3, y: 3, z: 0 },
+  });
+  const capsule = capsuleBody.createCapsule({
+    height: 1,
+    radius: 0.4,
+    density: 1,
+  });
   assert.equal(capsule.getType(), 'capsule');
 
-  const hullBody = world.createBody({ type: 'dynamic', position: { x: 3, y: 3, z: 0 } });
+  const hullBody = world.createBody({
+    type: 'dynamic',
+    position: { x: 3, y: 3, z: 0 },
+  });
   const hull = hullBody.createHull({
     points: [
       { x: -0.5, y: -0.5, z: -0.5 },
@@ -131,8 +172,14 @@ test('capsule and hull shapes simulate', () => {
 
   stepSeconds(world, 4);
 
-  assert.ok(capsuleBody.getPosition().y < 1.0, 'capsule should come to rest near the ground');
-  assert.ok(hullBody.getPosition().y < 1.0, 'hull should come to rest near the ground');
+  assert.ok(
+    capsuleBody.getPosition().y < 1.0,
+    'capsule should come to rest near the ground',
+  );
+  assert.ok(
+    hullBody.getPosition().y < 1.0,
+    'hull should come to rest near the ground',
+  );
 
   world.destroy();
   world.delete();
@@ -141,20 +188,37 @@ test('capsule and hull shapes simulate', () => {
 test('castRayClosest hits the nearest shape', () => {
   const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 } });
 
-  const bodyA = world.createBody({ type: 'static', position: { x: 0, y: 0, z: 0 } });
+  const bodyA = world.createBody({
+    type: 'static',
+    position: { x: 0, y: 0, z: 0 },
+  });
   const shapeA = bodyA.createSphere({ radius: 1 });
-  const bodyB = world.createBody({ type: 'static', position: { x: 5, y: 0, z: 0 } });
+  const bodyB = world.createBody({
+    type: 'static',
+    position: { x: 5, y: 0, z: 0 },
+  });
   bodyB.createSphere({ radius: 1 });
 
-  const result = world.castRayClosest({ x: -5, y: 0, z: 0 }, { x: 20, y: 0, z: 0 }, undefined);
+  const result = world.castRayClosest(
+    { x: -5, y: 0, z: 0 },
+    { x: 20, y: 0, z: 0 },
+    undefined,
+  );
   assert.equal(result.hit, true);
-  assert.ok(Math.abs(result.point.x + 1) < 1e-3, `nearest surface at x=-1, got ${result.point.x}`);
+  assert.ok(
+    Math.abs(result.point.x + 1) < 1e-3,
+    `nearest surface at x=-1, got ${result.point.x}`,
+  );
   assert.equal(result.shapeUserData, shapeA.getUserData());
   assert.equal(result.bodyUserData, bodyA.getUserData());
   assert.ok(result.shape.isValid());
   result.shape.delete();
 
-  const miss = world.castRayClosest({ x: -5, y: 10, z: 0 }, { x: 20, y: 0, z: 0 }, undefined);
+  const miss = world.castRayClosest(
+    { x: -5, y: 10, z: 0 },
+    { x: 20, y: 0, z: 0 },
+    undefined,
+  );
   assert.equal(miss.hit, false);
 
   world.destroy();
@@ -164,10 +228,17 @@ test('castRayClosest hits the nearest shape', () => {
 test('body move events report motion and sleep', () => {
   const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 } });
 
-  const ground = world.createBody({ type: 'static', position: { x: 0, y: -0.5, z: 0 } });
+  const ground = world.createBody({
+    type: 'static',
+    position: { x: 0, y: -0.5, z: 0 },
+  });
   ground.createBox({ halfExtents: { x: 20, y: 0.5, z: 20 } });
 
-  const box = world.createBody({ type: 'dynamic', position: { x: 0, y: 3, z: 0 }, userData: 42 });
+  const box = world.createBody({
+    type: 'dynamic',
+    position: { x: 0, y: 3, z: 0 },
+    userData: 42,
+  });
   box.createBox({ halfExtents: { x: 0.5, y: 0.5, z: 0.5 }, density: 1 });
 
   world.step(DT, SUBSTEPS);
@@ -196,13 +267,19 @@ test('body move events report motion and sleep', () => {
 test('contact events fire with shape tags', () => {
   const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 } });
 
-  const ground = world.createBody({ type: 'static', position: { x: 0, y: -0.5, z: 0 } });
+  const ground = world.createBody({
+    type: 'static',
+    position: { x: 0, y: -0.5, z: 0 },
+  });
   const groundShape = ground.createBox({
     halfExtents: { x: 20, y: 0.5, z: 20 },
     enableContactEvents: true,
   });
 
-  const box = world.createBody({ type: 'dynamic', position: { x: 0, y: 2, z: 0 } });
+  const box = world.createBody({
+    type: 'dynamic',
+    position: { x: 0, y: 2, z: 0 },
+  });
   const boxShape = box.createBox({
     halfExtents: { x: 0.5, y: 0.5, z: 0.5 },
     density: 1,
@@ -215,7 +292,10 @@ test('contact events fire with shape tags', () => {
     const events = world.getContactEvents();
     for (const e of events.begin) {
       const tags = [e.shapeUserDataA, e.shapeUserDataB];
-      if (tags.includes(groundShape.getUserData()) && tags.includes(boxShape.getUserData())) {
+      if (
+        tags.includes(groundShape.getUserData()) &&
+        tags.includes(boxShape.getUserData())
+      ) {
         began = true;
       }
     }
@@ -229,14 +309,20 @@ test('contact events fire with shape tags', () => {
 test('sensor events fire when a body passes through', () => {
   const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 } });
 
-  const sensorBody = world.createBody({ type: 'static', position: { x: 0, y: 1, z: 0 } });
+  const sensorBody = world.createBody({
+    type: 'static',
+    position: { x: 0, y: 1, z: 0 },
+  });
   const sensorShape = sensorBody.createBox({
     halfExtents: { x: 2, y: 0.5, z: 2 },
     isSensor: true,
     enableSensorEvents: true,
   });
 
-  const ball = world.createBody({ type: 'dynamic', position: { x: 0, y: 4, z: 0 } });
+  const ball = world.createBody({
+    type: 'dynamic',
+    position: { x: 0, y: 4, z: 0 },
+  });
   ball.createSphere({ radius: 0.3, density: 1, enableSensorEvents: true });
 
   let begin = false;
@@ -258,8 +344,14 @@ test('sensor events fire when a body passes through', () => {
 test('distance joint holds bodies at rest length', () => {
   const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 } });
 
-  const anchor = world.createBody({ type: 'static', position: { x: 0, y: 5, z: 0 } });
-  const bob = world.createBody({ type: 'dynamic', position: { x: 0, y: 3, z: 0 } });
+  const anchor = world.createBody({
+    type: 'static',
+    position: { x: 0, y: 5, z: 0 },
+  });
+  const bob = world.createBody({
+    type: 'dynamic',
+    position: { x: 0, y: 3, z: 0 },
+  });
   bob.createSphere({ radius: 0.2, density: 1 });
 
   const joint = world.createDistanceJoint(anchor, bob, { length: 2 });
@@ -269,7 +361,10 @@ test('distance joint holds bodies at rest length', () => {
 
   const p = bob.getPosition();
   const dist = Math.hypot(p.x - 0, p.y - 5, p.z - 0);
-  assert.ok(Math.abs(dist - 2) < 0.05, `bob should hang 2 units below anchor, at distance ${dist}`);
+  assert.ok(
+    Math.abs(dist - 2) < 0.05,
+    `bob should hang 2 units below anchor, at distance ${dist}`,
+  );
 
   joint.delete();
   world.destroy();
@@ -279,8 +374,14 @@ test('distance joint holds bodies at rest length', () => {
 test('revolute joint motor spins a wheel', () => {
   const world = new b3.World({ gravity: { x: 0, y: 0, z: 0 } });
 
-  const base = world.createBody({ type: 'static', position: { x: 0, y: 0, z: 0 } });
-  const wheel = world.createBody({ type: 'dynamic', position: { x: 0, y: 0, z: 0 } });
+  const base = world.createBody({
+    type: 'static',
+    position: { x: 0, y: 0, z: 0 },
+  });
+  const wheel = world.createBody({
+    type: 'dynamic',
+    position: { x: 0, y: 0, z: 0 },
+  });
   wheel.createSphere({ radius: 0.5, density: 1 });
 
   const joint = world.createRevoluteJoint(base, wheel, {
@@ -303,14 +404,20 @@ test('revolute joint motor spins a wheel', () => {
 test('kinematic body moves by velocity and ignores gravity', () => {
   const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 } });
 
-  const platform = world.createBody({ type: 'kinematic', position: { x: 0, y: 2, z: 0 } });
+  const platform = world.createBody({
+    type: 'kinematic',
+    position: { x: 0, y: 2, z: 0 },
+  });
   platform.createBox({ halfExtents: { x: 1, y: 0.1, z: 1 } });
   platform.setLinearVelocity({ x: 1, y: 0, z: 0 });
 
   stepSeconds(world, 2);
 
   const p = platform.getPosition();
-  assert.ok(Math.abs(p.x - 2) < 0.02, `platform should travel 2 units, at x=${p.x}`);
+  assert.ok(
+    Math.abs(p.x - 2) < 0.02,
+    `platform should travel 2 units, at x=${p.x}`,
+  );
   assert.ok(Math.abs(p.y - 2) < 1e-3, 'kinematic body should not fall');
 
   world.destroy();
@@ -320,17 +427,31 @@ test('kinematic body moves by velocity and ignores gravity', () => {
 test('forces, impulses, and explosions move bodies', () => {
   const world = new b3.World({ gravity: { x: 0, y: 0, z: 0 } });
 
-  const a = world.createBody({ type: 'dynamic', position: { x: 0, y: 0, z: 0 } });
+  const a = world.createBody({
+    type: 'dynamic',
+    position: { x: 0, y: 0, z: 0 },
+  });
   a.createSphere({ radius: 0.5, density: 1 });
   a.applyLinearImpulseToCenter({ x: 3, y: 0, z: 0 }, true);
   const v = a.getLinearVelocity();
   assert.ok(Math.abs(v.x - 3 / a.getMass()) < 1e-3);
 
-  const b = world.createBody({ type: 'dynamic', position: { x: 0, y: 5, z: 0 } });
+  const b = world.createBody({
+    type: 'dynamic',
+    position: { x: 0, y: 5, z: 0 },
+  });
   b.createSphere({ radius: 0.5, density: 1 });
-  world.explode({ position: { x: 0, y: 4, z: 0 }, radius: 2, falloff: 2, impulsePerArea: 10 });
+  world.explode({
+    position: { x: 0, y: 4, z: 0 },
+    radius: 2,
+    falloff: 2,
+    impulsePerArea: 10,
+  });
   world.step(DT, SUBSTEPS);
-  assert.ok(b.getLinearVelocity().y > 0.1, 'explosion should push the body away');
+  assert.ok(
+    b.getLinearVelocity().y > 0.1,
+    'explosion should push the body away',
+  );
 
   world.destroy();
   world.delete();
@@ -339,18 +460,31 @@ test('forces, impulses, and explosions move bodies', () => {
 test('collision filters keep shapes from colliding', () => {
   const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 } });
 
-  const ground = world.createBody({ type: 'static', position: { x: 0, y: -0.5, z: 0 } });
+  const ground = world.createBody({
+    type: 'static',
+    position: { x: 0, y: -0.5, z: 0 },
+  });
   ground.createBox({
     halfExtents: { x: 20, y: 0.5, z: 20 },
     filter: { categoryBits: 0x2, maskBits: 0x2 },
   });
 
-  const ghost = world.createBody({ type: 'dynamic', position: { x: 0, y: 2, z: 0 } });
-  ghost.createSphere({ radius: 0.5, density: 1, filter: { categoryBits: 0x4, maskBits: 0x4 } });
+  const ghost = world.createBody({
+    type: 'dynamic',
+    position: { x: 0, y: 2, z: 0 },
+  });
+  ghost.createSphere({
+    radius: 0.5,
+    density: 1,
+    filter: { categoryBits: 0x4, maskBits: 0x4 },
+  });
 
   stepSeconds(world, 2);
 
-  assert.ok(ghost.getPosition().y < -3, 'filtered body should fall through the ground');
+  assert.ok(
+    ghost.getPosition().y < -3,
+    'filtered body should fall through the ground',
+  );
 
   world.destroy();
   world.delete();
@@ -358,7 +492,10 @@ test('collision filters keep shapes from colliding', () => {
 
 test('body and shape userData round trips', () => {
   const world = new b3.World();
-  const body = world.createBody({ type: 'dynamic', position: { x: 0, y: 1, z: 0 } });
+  const body = world.createBody({
+    type: 'dynamic',
+    position: { x: 0, y: 1, z: 0 },
+  });
   const shape = body.createSphere({ radius: 0.5 });
 
   assert.ok(body.getUserData() > 0, 'auto tag should be assigned');
@@ -377,7 +514,10 @@ test('body and shape userData round trips', () => {
 
 test('destroying bodies and shapes invalidates them', () => {
   const world = new b3.World();
-  const body = world.createBody({ type: 'dynamic', position: { x: 0, y: 1, z: 0 } });
+  const body = world.createBody({
+    type: 'dynamic',
+    position: { x: 0, y: 1, z: 0 },
+  });
   const shape = body.createSphere({ radius: 0.5 });
 
   assert.ok(body.isValid());
@@ -403,7 +543,10 @@ test('motion locks restrict movement', () => {
 
   stepSeconds(world, 1);
 
-  assert.ok(Math.abs(body.getPosition().y - 3) < 1e-3, 'linearY lock should prevent falling');
+  assert.ok(
+    Math.abs(body.getPosition().y - 3) < 1e-3,
+    'linearY lock should prevent falling',
+  );
 
   world.destroy();
   world.delete();

@@ -1,0 +1,5 @@
+**/dist
+**/build
+pnpm-lock.yaml
+CHANGELOG.md
+.clang-format

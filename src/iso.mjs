@@ -17,13 +17,16 @@ export * from './frontend.js';
 export default async (options) => {
   const canThread =
     typeof SharedArrayBuffer !== 'undefined' &&
-    (typeof globalThis.crossOriginIsolated === 'undefined' || globalThis.crossOriginIsolated);
+    (typeof globalThis.crossOriginIsolated === 'undefined' ||
+      globalThis.crossOriginIsolated);
 
-  const flavour = canThread ? await import('./box3d.deluxe.mjs') : await import('./box3d.mjs');
+  const flavour = canThread
+    ? await import('./box3d.deluxe.mjs')
+    : await import('./box3d.mjs');
   const module = await flavour.default(options);
   init(module);
   const b3 = new B3();
   b3.threaded = canThread;
-  b3.maxWorkers = canThread ? module.maxWorkers ?? 8 : 1;
+  b3.maxWorkers = canThread ? (module.maxWorkers ?? 8) : 1;
   return b3;
 };

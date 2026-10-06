@@ -25,9 +25,13 @@
     "build": "bash scripts/build.sh",
     "build:debug": "TARGET_TYPE=Debug bash scripts/build.sh",
     "test": "node --test \"test/*.test.mjs\"",
-    "prepublishOnly": "node --test \"test/*.test.mjs\"",
-    "lint": "eslint .",
-    "lint:native": "clang-format --dry-run --Werror csrc/*.cpp"
+    "prepublishOnly": "pnpm test",
+    "lint": "eslint . && prettier . --check && pnpm lint:native",
+    "lint:native": "clang-format --dry-run --Werror csrc/*.cpp",
+    "fix": "eslint . --fix && prettier . --write && clang-format -i csrc/*.cpp",
+    "release": "semantic-release",
+    "release:ci": "pnpm release --yes",
+    "release:test": "pnpm release --no-git-tag-version --no-push --skip-npm"
   },
   "keywords": [
     "physics",
@@ -53,9 +57,15 @@
   },
   "homepage": "https://github.com/monteslu/box3d-wasm#readme",
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
-    "clang-format": "^1.8.0",
-    "eslint": "^9.39.4",
-    "typescript": "^5.7.0"
-  }
+    "@frsource/eslint-config": "1.86.0",
+    "@frsource/prettier-config": "1.48.0",
+    "@frsource/semantic-release-config": "1.117.1",
+    "clang-format": "1.8.0",
+    "eslint": "10.12.0",
+    "globals": "17.13.0",
+    "prettier": "3.9.9",
+    "semantic-release": "25.0.9",
+    "typescript": "6.0.3"
+  },
+  "packageManager": "pnpm@12.5.1"
 }

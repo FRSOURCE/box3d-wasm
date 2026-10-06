@@ -17,11 +17,21 @@ test('iso surface reports build capabilities', () => {
 test('box falls, settles, and answers an impulse (native spike twin)', () => {
   const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 } });
 
-  const ground = world.createBody({ type: 'static', position: { x: 0, y: -0.5, z: 0 } });
+  const ground = world.createBody({
+    type: 'static',
+    position: { x: 0, y: -0.5, z: 0 },
+  });
   ground.createBox({ halfExtents: { x: 20, y: 0.5, z: 20 } });
 
-  const body = world.createBody({ type: 'dynamic', position: { x: 0, y: 5, z: 0 } });
-  body.createBox({ halfExtents: { x: 0.5, y: 0.5, z: 0.5 }, density: 1, friction: 0.5 });
+  const body = world.createBody({
+    type: 'dynamic',
+    position: { x: 0, y: 5, z: 0 },
+  });
+  body.createBox({
+    halfExtents: { x: 0.5, y: 0.5, z: 0.5 },
+    density: 1,
+    friction: 0.5,
+  });
 
   for (let i = 0; i < 120; i++) world.step(1 / 60, 4);
 
@@ -41,10 +51,20 @@ test('iso and embind agree on the same scenario', async () => {
 
   function run(api) {
     const world = new api.World({ gravity: { x: 0, y: -10, z: 0 } });
-    const ground = world.createBody({ type: 'static', position: { x: 0, y: -0.5, z: 0 } });
+    const ground = world.createBody({
+      type: 'static',
+      position: { x: 0, y: -0.5, z: 0 },
+    });
     ground.createBox({ halfExtents: { x: 20, y: 0.5, z: 20 } });
-    const body = world.createBody({ type: 'dynamic', position: { x: 0.1, y: 4, z: -0.2 } });
-    body.createBox({ halfExtents: { x: 0.5, y: 0.5, z: 0.5 }, density: 1, friction: 0.5 });
+    const body = world.createBody({
+      type: 'dynamic',
+      position: { x: 0.1, y: 4, z: -0.2 },
+    });
+    body.createBox({
+      halfExtents: { x: 0.5, y: 0.5, z: 0.5 },
+      density: 1,
+      friction: 0.5,
+    });
     for (let i = 0; i < 180; i++) world.step(1 / 60, 4);
     const p = body.getPosition();
     world.destroy();

@@ -1,5 +1,24 @@
+# Dependency directories
 node_modules/
 deps/
+
+# Build output
 build/
 dist/
+release/
+emsdk-cache/
+
+# Logs
+logs
 *.log
+
+# Caches
+.eslintcache
+*.tsbuildinfo
+
+# Output of 'npm pack'
+*.tgz
+
+# dotenv environment variables file
+.env
+.env.*
