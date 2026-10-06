@@ -1,10 +1,12 @@
-# box3d-wasm
+# @frsource/box3d-wasm
 
-[![npm version](https://img.shields.io/npm/v/box3d-wasm.svg)](https://www.npmjs.com/package/box3d-wasm)
-[![CI](https://github.com/monteslu/box3d-wasm/actions/workflows/ci.yml/badge.svg)](https://github.com/monteslu/box3d-wasm/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/box3d-wasm.svg)](LICENSE)
+[![npm version](https://img.shields.io/npm/v/@frsource/box3d-wasm.svg)](https://www.npmjs.com/package/@frsource/box3d-wasm)
+[![CI](https://github.com/FRSOURCE/box3d-wasm/actions/workflows/ci.yml/badge.svg)](https://github.com/FRSOURCE/box3d-wasm/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/@frsource/box3d-wasm.svg)](LICENSE)
 
 [Box3D](https://github.com/erincatto/box3d) compiled to WebAssembly, with SIMD and optional wasm threads. Works in browsers and Node.js from a single package.
+
+This is a fork of [monteslu/box3d-wasm](https://github.com/monteslu/box3d-wasm) published under the `@frsource` npm scope. It tracks Box3D `main` automatically (see [Tracking Box3D](#tracking-box3d)), ships generated TypeScript declarations, and is where the bindings needed by [`@frsource/babylon-box3d`](https://github.com/FRSOURCE/babylon-box3d) are added.
 
 See it in action: [live three.js demo](https://box3d.netlify.app/) ([source](https://github.com/monteslu/threejs-box3d-demo)) with ragdolls, dominoes, a drivable buggy, and more.
 
@@ -13,13 +15,13 @@ Box3D is a 3D rigid body physics engine written by Erin Catto, the author of Box
 ## Install
 
 ```bash
-npm i box3d-wasm
+npm i @frsource/box3d-wasm
 ```
 
 ## Quick start
 
 ```js
-import Box3D from 'box3d-wasm';
+import Box3D from '@frsource/box3d-wasm';
 
 const b3 = await Box3D();
 
@@ -52,15 +54,15 @@ The same code runs in Node.js and in the browser. The default import auto-detect
 
 ## Flavours
 
-| import                | threads | picked by the default import when                                      |
-| --------------------- | ------- | ---------------------------------------------------------------------- |
-| `box3d-wasm/deluxe`   | yes     | SharedArrayBuffer is usable (Node.js, or a cross-origin isolated page) |
-| `box3d-wasm/standard` | no      | everything else                                                        |
+| import                          | threads | picked by the default import when                                      |
+| ------------------------------- | ------- | ---------------------------------------------------------------------- |
+| `@frsource/box3d-wasm/deluxe`   | yes     | SharedArrayBuffer is usable (Node.js, or a cross-origin isolated page) |
+| `@frsource/box3d-wasm/standard` | no      | everything else                                                        |
 
-`box3d-wasm` (the default import) runs the detection above and returns whichever module fits. Import a specific flavour directly when you want to skip detection:
+`@frsource/box3d-wasm` (the default import) runs the detection above and returns whichever module fits. Import a specific flavour directly when you want to skip detection:
 
 ```js
-import Box3D from 'box3d-wasm/deluxe';
+import Box3D from '@frsource/box3d-wasm/deluxe';
 
 const b3 = await Box3D();
 const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 }, workerCount: 4 });
@@ -162,14 +164,14 @@ Every body and shape gets an auto-assigned numeric `userData` tag (you can overw
 
 Wrapper objects returned by embind (`World`, `Body`, `Shape`, joints) are tiny handles. Call `.delete()` when you no longer need the JS handle, and `.destroy()` to remove the underlying object from the simulation. Destroying a world frees every body, shape, and joint inside it.
 
-## The isomorphic surface (`box3d-wasm/iso`)
+## The isomorphic surface (`@frsource/box3d-wasm/iso`)
 
 For projects where the same game source also compiles to a NATIVE binary
 (e.g. [scriptc-game](https://github.com/monteslu/scriptc-game)), the
 `/iso` entry serves the same engine through a shared binding frontend:
 
 ```js
-import Box3D from 'box3d-wasm/iso';
+import Box3D from '@frsource/box3d-wasm/iso';
 
 const b3 = await Box3D();
 const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 } });

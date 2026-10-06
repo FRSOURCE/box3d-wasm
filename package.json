@@ -1,5 +1,5 @@
 {
-  "name": "box3d-wasm",
+  "name": "@frsource/box3d-wasm",
   "version": "0.2.0",
   "description": "Box3D, Erin Catto's 3D physics engine, compiled to WebAssembly with SIMD and optional wasm threads. Isomorphic: works in browsers and Node.js, auto-detecting thread support.",
   "type": "module",
@@ -50,12 +50,15 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/monteslu/box3d-wasm.git"
+    "url": "git+https://github.com/FRSOURCE/box3d-wasm.git"
   },
   "bugs": {
-    "url": "https://github.com/monteslu/box3d-wasm/issues"
+    "url": "https://github.com/FRSOURCE/box3d-wasm/issues"
   },
-  "homepage": "https://github.com/monteslu/box3d-wasm#readme",
+  "homepage": "https://github.com/FRSOURCE/box3d-wasm#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
     "@frsource/eslint-config": "1.86.0",
     "@frsource/prettier-config": "1.48.0",
@@ -67,5 +70,8 @@
     "semantic-release": "25.0.9",
     "typescript": "6.0.3"
   },
-  "packageManager": "pnpm@12.5.1"
+  "packageManager": "pnpm@12.5.1",
+  "contributors": [
+    "Jakub Freisler <jakub.freisler@frsource.org> (https://www.frsource.org/)"
+  ]
 }
