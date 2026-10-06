@@ -59,14 +59,12 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
+      # No actions-cache-folder: that would put emsdk inside the workspace, and
+      # emcc --emit-tsd runs tsc from the emsdk directory, where TypeScript 6
+      # refuses (TS5112) once it finds a tsconfig.json in a parent directory.
       - uses: mymindstorm/setup-emsdk@v16
         with:
           version: 4.0.18
-          # Outside the workspace: emcc --emit-tsd runs tsc from the emsdk
-          # directory, and TypeScript 6 refuses (TS5112) when it finds a
-          # tsconfig.json in any parent directory.
-          actions-cache-folder: ../emsdk-cache
-          cache-key: emsdk-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
       # also fetches the pinned Box3D source: the @erincatto/box3d git dependency
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
