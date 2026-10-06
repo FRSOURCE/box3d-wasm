@@ -63,9 +63,8 @@ jobs:
         with:
           version: 4.0.18
           actions-cache-folder: emsdk-cache
+      # also fetches the pinned Box3D source: the @erincatto/box3d git dependency
       - run: pnpm install --frozen-lockfile
-      - name: Fetch pinned Box3D source
-        run: pnpm fetch-deps
       - run: pnpm build
       - run: pnpm test
       - uses: actions/upload-artifact@v7

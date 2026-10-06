@@ -194,8 +194,7 @@ Requires [emsdk](https://emscripten.org/docs/getting_started/downloads.html) (te
 
 ```bash
 nvm use            # picks the Node version from .nvmrc
-pnpm install
-pnpm fetch-deps    # clones Box3D at the SHA pinned in scripts/versions.json
+pnpm install       # also fetches the pinned Box3D source (the @erincatto/box3d git dependency)
 pnpm build         # builds standard and deluxe flavours plus their .d.ts into dist/
 pnpm test
 pnpm lint          # eslint + prettier + clang-format
@@ -203,6 +202,10 @@ pnpm fix           # auto-fixes what the linters can
 ```
 
 Commits follow the [Angular convention](https://github.com/angular/angular/blob/main/CONTRIBUTING.md#commit); every push to `main` is released by [semantic-release](https://github.com/semantic-release/semantic-release) and published to npm through trusted publishing.
+
+## Tracking Box3D
+
+Box3D is pinned as a git dependency in `package.json` (`@erincatto/box3d`: `github:erincatto/box3d#<commit>`). Renovate opens a pull request whenever Box3D's `main` moves; CI rebuilds both flavours and runs the tests against the new commit, and a green build is merged and released automatically. A Box3D change that breaks the binding fails CI and waits for a fix in `csrc/glue.cpp`.
 
 ## TypeScript
 

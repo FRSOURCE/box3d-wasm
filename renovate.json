@@ -1,4 +1,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>FRSOURCE/renovate-config"]
+  "extends": ["github>FRSOURCE/renovate-config"],
+  "packageRules": [
+    {
+      "matchDepNames": ["erincatto/box3d"],
+      "semanticCommitType": "feat",
+      "semanticCommitScope": "engine",
+      "automerge": true,
+      "schedule": ["at any time"]
+    }
+  ]
 }
