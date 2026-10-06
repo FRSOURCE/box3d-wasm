@@ -100,14 +100,17 @@ for FLAVOUR in $FLAVOURS; do
   esac
 
   echo "==> emcc link ($FLAVOUR) -> dist/$BASENAME.mjs"
+  # --emit-tsd derives dist/$BASENAME.d.ts from the embind registrations, so
+  # the published types can never drift from the compiled binding.
   emcc "$ROOT/csrc/glue.cpp" "$ROOT/csrc/flat.cpp" "$LIB" \
     -I "$BOX3D_SRC/include" \
     "${EMCC_OPTS[@]}" \
     "${FLAVOUR_FLAGS[@]:-}" \
+    --emit-tsd "$BASENAME.d.ts" \
     -o "$ROOT/dist/$BASENAME.mjs"
 done
 
-cp "$ROOT/src/entry.mjs" "$ROOT/dist/entry.mjs"
+cp "$ROOT/src/entry.mjs" "$ROOT/src/entry.d.ts" "$ROOT/dist/"
 
 # The isomorphic surface: the shared TS frontend (type-STRIPPED, not
 # transformed -- the same file must compile under a native host's static
