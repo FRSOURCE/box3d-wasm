@@ -190,7 +190,7 @@ with the embind API above, which remains the default export.
 
 ## Building from source
 
-Requires [emsdk](https://emscripten.org/docs/getting_started/downloads.html) (tested with 4.0.18), CMake, the Node version from `.nvmrc` and pnpm.
+Requires [emsdk](https://emscripten.org/docs/getting_started/downloads.html) (tested with 6.0.2), CMake, the Node version from `.nvmrc` and pnpm.
 
 ```bash
 nvm use            # picks the Node version from .nvmrc

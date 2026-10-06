@@ -64,7 +64,7 @@ jobs:
       # refuses (TS5112) once it finds a tsconfig.json in a parent directory.
       - uses: mymindstorm/setup-emsdk@v16
         with:
-          version: 4.0.18
+          version: 6.0.2
       # also fetches the pinned Box3D source: the @erincatto/box3d git dependency
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
