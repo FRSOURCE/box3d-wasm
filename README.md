@@ -25,11 +25,21 @@ const b3 = await Box3D();
 
 const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 } });
 
-const ground = world.createBody({ type: 'static', position: { x: 0, y: -0.5, z: 0 } });
+const ground = world.createBody({
+  type: 'static',
+  position: { x: 0, y: -0.5, z: 0 },
+});
 ground.createBox({ halfExtents: { x: 20, y: 0.5, z: 20 } });
 
-const body = world.createBody({ type: 'dynamic', position: { x: 0, y: 5, z: 0 } });
-body.createBox({ halfExtents: { x: 0.5, y: 0.5, z: 0.5 }, density: 1, friction: 0.5 });
+const body = world.createBody({
+  type: 'dynamic',
+  position: { x: 0, y: 5, z: 0 },
+});
+body.createBox({
+  halfExtents: { x: 0.5, y: 0.5, z: 0.5 },
+  density: 1,
+  friction: 0.5,
+});
 
 for (let i = 0; i < 120; i++) {
   world.step(1 / 60, 4);
@@ -42,10 +52,10 @@ The same code runs in Node.js and in the browser. The default import auto-detect
 
 ## Flavours
 
-| import | threads | picked by the default import when |
-| --- | --- | --- |
-| `box3d-wasm/deluxe` | yes | SharedArrayBuffer is usable (Node.js, or a cross-origin isolated page) |
-| `box3d-wasm/standard` | no | everything else |
+| import                | threads | picked by the default import when                                      |
+| --------------------- | ------- | ---------------------------------------------------------------------- |
+| `box3d-wasm/deluxe`   | yes     | SharedArrayBuffer is usable (Node.js, or a cross-origin isolated page) |
+| `box3d-wasm/standard` | no      | everything else                                                        |
 
 `box3d-wasm` (the default import) runs the detection above and returns whichever module fits. Import a specific flavour directly when you want to skip detection:
 
@@ -83,14 +93,14 @@ const world = new b3.World({
   workerCount: 4, // deluxe build only
 });
 
-world.step(1 / 60, 4);          // timeStep, subStepCount
+world.step(1 / 60, 4); // timeStep, subStepCount
 world.setGravity({ x: 0, y: -3.7, z: 0 });
 world.getAwakeBodyCount();
 world.castRayClosest(origin, translation, filter);
 world.explode({ position, radius: 3, falloff: 2, impulsePerArea: 10 });
-world.getBodyEvents();          // [{ userData, position, rotation, fellAsleep }]
-world.getContactEvents();       // { begin: [...], end: [...], hit: [...] }
-world.getSensorEvents();        // { begin: [...], end: [...] }
+world.getBodyEvents(); // [{ userData, position, rotation, fellAsleep }]
+world.getContactEvents(); // { begin: [...], end: [...], hit: [...] }
+world.getSensorEvents(); // { begin: [...], end: [...] }
 world.destroy();
 ```
 
@@ -98,7 +108,7 @@ world.destroy();
 
 ```js
 const body = world.createBody({
-  type: 'dynamic',              // 'static' | 'kinematic' | 'dynamic'
+  type: 'dynamic', // 'static' | 'kinematic' | 'dynamic'
   position: { x: 0, y: 5, z: 0 },
   rotation: { x: 0, y: 0, z: 0, w: 1 },
   linearVelocity: { x: 0, y: 0, z: 0 },
@@ -106,10 +116,16 @@ const body = world.createBody({
   motionLocks: { angularX: true, angularZ: true },
 });
 
-body.getPosition(); body.getRotation(); body.getTransform();
-body.setLinearVelocity(v); body.applyLinearImpulseToCenter(v, true);
-body.applyForce(force, worldPoint, true); body.applyTorque(t, true);
-body.getMass(); body.isAwake(); body.setAwake(true);
+body.getPosition();
+body.getRotation();
+body.getTransform();
+body.setLinearVelocity(v);
+body.applyLinearImpulseToCenter(v, true);
+body.applyForce(force, worldPoint, true);
+body.applyTorque(t, true);
+body.getMass();
+body.isAwake();
+body.setAwake(true);
 body.destroy();
 ```
 
@@ -172,14 +188,19 @@ with the embind API above, which remains the default export.
 
 ## Building from source
 
-Requires [emsdk](https://emscripten.org/docs/getting_started/downloads.html) (tested with 4.0.18), CMake, and Node 22+.
+Requires [emsdk](https://emscripten.org/docs/getting_started/downloads.html) (tested with 4.0.18), CMake, the Node version from `.nvmrc` and pnpm.
 
 ```bash
-npm ci
-npm run fetch-deps   # clones Box3D at the SHA pinned in scripts/versions.json
-npm run build        # builds standard and deluxe flavours into dist/
-npm test
+nvm use            # picks the Node version from .nvmrc
+pnpm install
+pnpm fetch-deps    # clones Box3D at the SHA pinned in scripts/versions.json
+pnpm build         # builds standard and deluxe flavours into dist/
+pnpm test
+pnpm lint          # eslint + prettier + clang-format
+pnpm fix           # auto-fixes what the linters can
 ```
+
+Commits follow the [Angular convention](https://github.com/angular/angular/blob/main/CONTRIBUTING.md#commit); every push to `main` is released by [semantic-release](https://github.com/semantic-release/semantic-release) and published to npm through trusted publishing.
 
 ## License
 

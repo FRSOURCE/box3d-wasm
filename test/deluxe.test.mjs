@@ -9,7 +9,10 @@ const DT = 1 / 60;
 const SUBSTEPS = 4;
 
 function buildPile(world, count) {
-  const ground = world.createBody({ type: 'static', position: { x: 0, y: -0.5, z: 0 } });
+  const ground = world.createBody({
+    type: 'static',
+    position: { x: 0, y: -0.5, z: 0 },
+  });
   ground.createBox({ halfExtents: { x: 40, y: 0.5, z: 40 } });
 
   const bodies = [];
@@ -33,7 +36,10 @@ test('module reports threaded build', () => {
 });
 
 test('multithreaded world simulates a pile of boxes', () => {
-  const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 }, workerCount: 4 });
+  const world = new b3.World({
+    gravity: { x: 0, y: -10, z: 0 },
+    workerCount: 4,
+  });
   assert.equal(world.getWorkerCount(), 4);
 
   const bodies = buildPile(world, 100);
@@ -43,7 +49,10 @@ test('multithreaded world simulates a pile of boxes', () => {
 
   for (const body of bodies) {
     const p = body.getPosition();
-    assert.ok(p.y > 0 && p.y < 15, `body should stay in a sane range, y=${p.y}`);
+    assert.ok(
+      p.y > 0 && p.y < 15,
+      `body should stay in a sane range, y=${p.y}`,
+    );
   }
 
   world.destroy();
@@ -59,7 +68,10 @@ test('worker count above the maximum is clamped', () => {
 
 test('single worker and multi worker runs agree', () => {
   const run = (workerCount) => {
-    const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 }, workerCount });
+    const world = new b3.World({
+      gravity: { x: 0, y: -10, z: 0 },
+      workerCount,
+    });
     const bodies = buildPile(world, 50);
     for (let i = 0; i < 120; i++) {
       world.step(DT, SUBSTEPS);
