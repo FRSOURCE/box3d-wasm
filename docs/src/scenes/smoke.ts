@@ -54,10 +54,12 @@ export const smoke: SceneDef = {
       tracked.push({ body, mesh });
     }
 
+    const position: Vec3 = { x: 0, y: 0, z: 0 };
+    const rotation: Quat = { x: 0, y: 0, z: 0, w: 1 };
     const sync = (): void => {
       for (const { body, mesh } of tracked) {
-        const position: Vec3 = body.getPosition();
-        const rotation: Quat = body.getRotation();
+        body.getPosition(position);
+        body.getRotation(rotation);
         mesh.position.set(position.x, position.y, position.z);
         mesh.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
       }
@@ -68,13 +70,11 @@ export const smoke: SceneDef = {
       bodyCount: () => tracked.length + 1,
       sync,
       dispose() {
-        for (const { body, mesh } of tracked) {
-          body.delete();
+        for (const { mesh } of tracked) {
           scene.remove(mesh);
           mesh.geometry.dispose();
           disposeMaterial(mesh);
         }
-        ground.delete();
         scene.remove(groundMesh);
         groundMesh.geometry.dispose();
         groundMaterial.dispose();

@@ -1,18 +1,8 @@
-import type { MainModule, World } from '@frsource/box3d-wasm';
+import type { Box3D, Quat, Vec3, World } from '@frsource/box3d-wasm';
 
-export type B3 = MainModule;
-export type { World };
+export type B3 = Box3D;
+export type { Quat, Vec3, World };
 export type Flavour = 'deluxe' | 'standard';
-
-export interface Vec3 {
-  x: number;
-  y: number;
-  z: number;
-}
-
-export interface Quat extends Vec3 {
-  w: number;
-}
 
 export interface Physics {
   b3: B3;
@@ -48,7 +38,6 @@ export function createWorld(b3: B3, workerCount: number): World {
 
 export function destroyWorld(world: World): void {
   world.destroy();
-  world.delete();
 }
 
 /** `?threads=N` wins; otherwise monteslu's rule of min(8, cores). */

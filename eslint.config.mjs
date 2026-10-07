@@ -7,14 +7,14 @@ export default [
   {
     ignores: [
       '**/dist',
-      '**/docs/dist',
       '**/build',
       '**/node_modules',
       '**/emsdk-cache',
+      'src/wasm',
     ],
   },
   {
-    files: ['src/**', 'test/**'],
+    files: ['src/**', 'test/**', 'bench/**', 'scripts/**'],
     languageOptions: {
       globals: {
         ...globals.es2021,
@@ -33,6 +33,10 @@ export default [
       globals: { ...globals.es2021, ...globals.serviceworker },
     },
     // plain browser script with no logger; a failed fetch must stay visible
+    rules: { 'no-console': 'off' },
+  },
+  {
+    files: ['bench/**'],
     rules: { 'no-console': 'off' },
   },
 ];

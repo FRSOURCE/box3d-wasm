@@ -1,21 +1,21 @@
 {
   "name": "@frsource/box3d-wasm",
   "version": "0.2.0",
-  "description": "Box3D, Erin Catto's 3D physics engine, compiled to WebAssembly with SIMD and optional wasm threads. Isomorphic: works in browsers and Node.js, auto-detecting thread support.",
+  "description": "Box3D, Erin Catto's 3D physics engine, compiled to WebAssembly with SIMD and optional wasm threads, behind a flat C ABI and a typed TypeScript frontend. Works in browsers and Node.js.",
   "type": "module",
-  "main": "dist/entry.mjs",
+  "main": "dist/index.js",
   "exports": {
     ".": {
-      "types": "./dist/entry.d.ts",
-      "default": "./dist/entry.mjs"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./standard": {
-      "types": "./dist/box3d.d.ts",
-      "default": "./dist/box3d.mjs"
+      "types": "./dist/standard.d.ts",
+      "default": "./dist/standard.js"
     },
     "./deluxe": {
-      "types": "./dist/box3d.deluxe.d.ts",
-      "default": "./dist/box3d.deluxe.mjs"
+      "types": "./dist/deluxe.d.ts",
+      "default": "./dist/deluxe.js"
     },
     "./package.json": "./package.json"
   },
@@ -32,17 +32,19 @@
     "build": "bash scripts/build.sh",
     "build:debug": "TARGET_TYPE=Debug bash scripts/build.sh",
     "dev": "pnpm --filter @frsource/box3d-wasm-demo dev",
+    "typecheck": "tsc --noEmit && pnpm --filter @frsource/box3d-wasm-demo typecheck",
     "test": "vitest run",
-    "typecheck": "pnpm --filter @frsource/box3d-wasm-demo typecheck",
+    "test:dev": "vitest",
+    "test:types": "vitest run --typecheck.only",
+    "bench": "node bench/step.ts",
     "prepublishOnly": "pnpm test",
     "prepack": "pnpm build",
     "lint": "eslint . && prettier . --check && pnpm lint:native",
-    "lint:native": "clang-format --dry-run --Werror csrc/*.cpp",
-    "fix": "eslint . --fix && prettier . --write && clang-format -i csrc/*.cpp",
+    "lint:native": "clang-format --dry-run --Werror csrc/*.c csrc/*.h",
+    "fix": "eslint . --fix && prettier . --write && clang-format -i csrc/*.c csrc/*.h",
     "release": "semantic-release",
     "release:ci": "pnpm release --yes",
-    "release:test": "pnpm release --no-git-tag-version --no-push --skip-npm",
-    "test:dev": "vitest"
+    "release:test": "pnpm release --no-git-tag-version --no-push --skip-npm"
   },
   "keywords": [
     "physics",
@@ -55,7 +57,8 @@
     "threads",
     "rigid-body",
     "game",
-    "simulation"
+    "simulation",
+    "typescript"
   ],
   "author": "Luis Montes",
   "license": "MIT",
@@ -75,6 +78,7 @@
     "@frsource/eslint-config": "1.86.0",
     "@frsource/prettier-config": "1.48.0",
     "@frsource/semantic-release-config": "1.117.1",
+    "@types/node": "26.6.4",
     "clang-format": "1.8.0",
     "eslint": "10.12.0",
     "globals": "17.13.0",
@@ -87,5 +91,6 @@
   "contributors": [
     "Jakub Freisler <jakub.freisler@frsource.org> (https://www.frsource.org/)"
   ],
-  "types": "dist/entry.d.ts"
+  "types": "dist/index.d.ts",
+  "sideEffects": false
 }

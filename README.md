@@ -34,7 +34,7 @@
     <br>One package for browsers and Node.js, auto-detecting thread support
     <br>Plain <code>{ x, y, z }</code> vectors and <code>{ x, y, z, w }</code> quaternions that drop straight into three.js or Babylon.js
     <br>Rigid bodies, boxes, spheres, capsules, convex hulls, nine joint types, ray casts, explosions and events
-    <br>TypeScript declarations generated from the binding itself at build time
+    <br>A typed TypeScript frontend over a flat C shim: no <code>any</code>, no allocations per frame
     <br>Tracks Box3D <code>main</code> automatically: every upstream commit is rebuilt, tested and released
     <br>Published under <a href="https://opensource.org/licenses/MIT" target="_blank">MIT</a> license</i>
   <br>
@@ -60,23 +60,17 @@ pnpm add @frsource/box3d-wasm
 ### Modern JS/TypeScript
 
 ```ts
-import Box3D from '@frsource/box3d-wasm';
+import Box3D, { vec3 } from '@frsource/box3d-wasm';
 
 const b3 = await Box3D();
-const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 } });
+const world = new b3.World({ gravity: vec3(0, -10, 0) });
 
-const ground = world.createBody({
-  type: 'static',
-  position: { x: 0, y: -0.5, z: 0 },
-});
-ground.createBox({ halfExtents: { x: 20, y: 0.5, z: 20 } });
+const ground = world.createBody({ type: 'static', position: vec3(0, -0.5, 0) });
+ground.createBox({ halfExtents: vec3(20, 0.5, 20) });
 
-const crate = world.createBody({
-  type: 'dynamic',
-  position: { x: 0, y: 5, z: 0 },
-});
+const crate = world.createBody({ type: 'dynamic', position: vec3(0, 5, 0) });
 crate.createBox({
-  halfExtents: { x: 0.5, y: 0.5, z: 0.5 },
+  halfExtents: vec3(0.5, 0.5, 0.5),
   density: 1,
   friction: 0.5,
 });
@@ -91,6 +85,22 @@ world.destroy(); // frees every body, shape and joint in it
 ```
 
 The same code runs in Node.js and in the browser. The wasm file is loaded relative to the module, so bundlers that understand `new URL(..., import.meta.url)` (Vite, webpack 5, Rollup) pick it up automatically.
+
+Syncing a scene every frame costs no allocations: bodies that moved come back as one reader over a flat buffer.
+
+```ts
+const position = vec3();
+const rotation = quat();
+
+world.step(1 / 60, 4);
+const moves = world.getMoveEvents();
+for (let i = 0; i < moves.count; i++) {
+  const body = moves.bodyAt(i);
+  moves.copyPositionTo(i, position);
+  moves.copyRotationTo(i, rotation);
+  // write position and rotation into the mesh that owns `body`
+}
+```
 
 ### Flavours
 
@@ -111,7 +121,7 @@ b3.threaded; // true
 const world = new b3.World({ gravity: { x: 0, y: -10, z: 0 }, workerCount: 4 });
 ```
 
-`workerCount` enables Box3D's internal multithreaded solver. It is clamped to `[1, b3.maxWorkers]` and ignored by the single threaded build.
+`workerCount` is the number of threads a step uses, the calling thread included. It is clamped to `[1, b3.maxWorkers]`, `'auto'` means `b3.maxWorkers`, and the single threaded build always runs on one. Worlds share one thread pool that is created on demand and never joined, so destroying and recreating worlds is cheap.
 
 Wasm threads use SharedArrayBuffer, which browsers only expose on cross-origin isolated pages, so serve your app with:
 
@@ -144,280 +154,177 @@ The threads toggle and worker slider in the bottom-left corner change the same p
 
 ## API
 
+The package is a TypeScript frontend over a flat C shim; the declarations shipped in `dist/` are the complete reference. This section is the map.
+
 ### Conventions
 
-- Vectors are plain `{ x, y, z }` objects and quaternions are `{ x, y, z, w }`. Transforms are `{ position, rotation }`. Values pass directly to and from three.js, Babylon.js and friends.
-- Every creator takes one options object applied over the Box3D default definition, so every field is optional. Unknown keys are ignored.
+- Vectors are plain `{ x, y, z }` objects and quaternions are `{ x, y, z, w }`. Transforms are `{ position, rotation }`. `vec3()`, `quat()`, `transform()` and `mat3()` are exported helpers; values pass directly to and from three.js, Babylon.js and friends.
+- Every creator takes one options object applied over the Box3D default definition, so every field is optional and documented in the declarations.
 - Angles are radians, lengths are meters, masses are kilograms, and `hertz` / `dampingRatio` pairs configure Box3D's soft constraints.
-- `World`, `Body`, `Shape` and joint objects are tiny handles over Box3D ids. `.destroy()` removes the object from the simulation; `.delete()` frees the JS handle (see [Memory](#memory)). `.isValid()` tells whether the underlying object still exists.
-- Bodies and shapes carry a numeric `userData` tag. One is auto-assigned at creation (starting at 1; 0 means untagged) and you can overwrite it with your own number. Events and ray casts report these tags, so a plain `Map<number, YourObject>` connects physics back to your scene.
+- Getters that return a vector, quaternion or struct accept an optional `out` object and return it, so a hot loop can reuse one. Without `out` they allocate.
+- `World`, `Body`, `Shape` and the joint classes are handles over slots in the shim. `destroy()` removes the object from the simulation and marks the handle and everything it owns dead; a dead handle throws on use and reports `alive === false` and `isValid() === false`. There is nothing to free on the JS side.
+- Events and query results refer to the handles themselves (`moves.bodyAt(i)` is the `Body` you created), so no user data map is needed.
+- 64-bit filter bits and material ids accept `number | bigint`; getters return a `number` whenever the high word is zero.
 
 ### Module
 
 ```ts
-const b3 = await Box3D(emscriptenOptions?);
+const b3 = await Box3D(moduleOptions?);
 ```
 
-| member          | description                                                           |
-| --------------- | --------------------------------------------------------------------- |
-| `b3.World`      | the world class, see below                                            |
-| `b3.threaded`   | `true` in the deluxe (wasm threads) build                             |
-| `b3.maxWorkers` | upper bound for `workerCount`                                         |
-| `b3.HEAPF32` …  | the usual emscripten runtime exports (`HEAPF32`, `HEAPU8`, `HEAPU32`) |
+| member            | description                                                                             |
+| ----------------- | --------------------------------------------------------------------------------------- |
+| `b3.World`        | the world class: `new b3.World(options)`                                                |
+| `b3.threaded`     | `true` in the deluxe (wasm threads) build                                               |
+| `b3.maxWorkers`   | largest `workerCount` a world can use, the calling thread included; `1` without threads |
+| `b3.flavour`      | `'standard'` or `'deluxe'`                                                              |
+| `b3.version`      | `{ engine, engineSha }`: Box3D's version and the commit this build compiled             |
+| `b3.raw`          | the emscripten module, for calling the shim's `_bx_*` exports directly                  |
+| `canUseThreads()` | named export of the default entry: whether the deluxe build can load here               |
+
+`moduleOptions` reach emscripten: `locateFile(path, prefix)` for custom asset URLs, `pthreadPoolSize` (deluxe) for the number of workers to pre-spawn, `print` and `printErr`.
 
 ### World
 
-```ts
-const world = new b3.World({
-  gravity: { x: 0, y: -10, z: 0 },
-  enableSleep: true,
-  enableContinuous: true,
-  workerCount: 4, // deluxe build only
-});
-```
+`new b3.World({ gravity, enableSleep, enableContinuous, restitutionThreshold, hitEventThreshold, contactHertz, contactDampingRatio, contactSpeed, maximumLinearSpeed, restitutionIterations, enableRestitutionPropagation, workerCount, capacity })`. `workerCount` takes a number or `'auto'` (= `b3.maxWorkers`) and is clamped to the pool.
 
-| option                 | default         | description                                                |
-| ---------------------- | --------------- | ---------------------------------------------------------- |
-| `gravity`              | `{ 0, -10, 0 }` | world gravity vector                                       |
-| `enableSleep`          | `true`          | let resting bodies fall asleep                             |
-| `enableContinuous`     | `true`          | continuous collision for fast bodies against static shapes |
-| `restitutionThreshold` | Box3D default   | relative speed below which restitution is ignored          |
-| `hitEventThreshold`    | Box3D default   | approach speed above which hit events are reported         |
-| `contactHertz`         | Box3D default   | contact stiffness                                          |
-| `contactDampingRatio`  | Box3D default   | contact damping                                            |
-| `contactSpeed`         | Box3D default   | maximum contact push-out speed                             |
-| `maximumLinearSpeed`   | Box3D default   | speed clamp for all bodies                                 |
-| `workerCount`          | `1`             | solver threads, clamped to `[1, b3.maxWorkers]`            |
-
-| method                                                         | description                                                                 |
-| -------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `step(timeStep, subStepCount)`                                 | advance the simulation; `1 / 60` and `4` are good defaults                  |
-| `getGravity()` / `setGravity(v)`                               | world gravity                                                               |
-| `enableSleeping(flag)`                                         | toggle sleeping for the whole world                                         |
-| `enableContinuous(flag)`                                       | toggle continuous collision                                                 |
-| `getAwakeBodyCount()`                                          | number of bodies currently simulating                                       |
-| `getWorkerCount()`                                             | solver threads in use                                                       |
-| `createBody(opts)`                                             | see [Bodies](#bodies)                                                       |
-| `create<Type>Joint(bodyA, bodyB, opts)`                        | see [Joints](#joints)                                                       |
-| `castRayClosest(origin, translation, filter)`                  | see [Queries](#queries)                                                     |
-| `explode(opts)`                                                | see [Queries](#queries)                                                     |
-| `getBodyEvents()` / `getContactEvents()` / `getSensorEvents()` | see [Events](#events)                                                       |
-| `getProfile()`                                                 | `{ step, pairs, collide, solve }` timings in milliseconds for the last step |
-| `isValid()` / `destroy()`                                      | destroying a world frees every body, shape and joint inside it              |
+| method                                                               | description                                                                  |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `step(timeStep, subStepCount = 4)`                                   | advance the simulation; `1 / 60` and `4` are good defaults                   |
+| `getGravity(out?)` / `setGravity(v)`                                 | world gravity                                                                |
+| `enableSleeping(flag)` / `isSleepingEnabled()`                       | sleeping for the whole world                                                 |
+| `enableContinuous(flag)` / `isContinuousEnabled()`                   | continuous collision for fast bodies                                         |
+| `setMaximumLinearSpeed(v)` / `getMaximumLinearSpeed()`               | speed clamp for all bodies                                                   |
+| `setContactTuning(hertz, dampingRatio, contactSpeed)`                | contact softness                                                             |
+| `setRestitutionThreshold(v)` / `setHitEventThreshold(v)` (+ getters) | event and bounce thresholds                                                  |
+| `getAwakeBodyCount()` / `getWorkerCount()`                           | bodies simulating; threads a step uses                                       |
+| `createBody(options)`                                                | see [Bodies](#bodies)                                                        |
+| `create<Type>Joint(bodyA, bodyB, options)`                           | see [Joints](#joints)                                                        |
+| `castRayClosest(origin, translation, filter?)`                       | see [Queries](#queries)                                                      |
+| `explode({ position, radius, falloff, impulsePerArea, maskBits })`   | radial impulse on spheres, capsules and hulls                                |
+| `getMoveEvents()` and the other `get*Events()`                       | see [Events](#events)                                                        |
+| `getProfile(out?)` / `getCounters(out?)`                             | the last step's timings in milliseconds (23 fields) and the world's counters |
+| `bodies` / `joints`                                                  | live sets of the handles in this world                                       |
+| `isValid()` / `destroy()`                                            | destroying a world frees every body, shape and joint inside it               |
 
 ### Bodies
 
 ```ts
 const body = world.createBody({
   type: 'dynamic', // 'static' | 'kinematic' | 'dynamic'
-  position: { x: 0, y: 5, z: 0 },
-  rotation: { x: 0, y: 0, z: 0, w: 1 },
-  linearVelocity: { x: 0, y: 0, z: 0 },
+  position: vec3(0, 5, 0),
+  rotation: quat(),
+  linearVelocity: vec3(),
   angularDamping: 0.05,
   motionLocks: { angularX: true, angularZ: true },
-  userData: 42,
+  name: 'crate',
 });
 ```
 
-| option                               | default       | description                                                            |
-| ------------------------------------ | ------------- | ---------------------------------------------------------------------- |
-| `type`                               | `'static'`    | `'static'`, `'kinematic'` or `'dynamic'`                               |
-| `position` / `rotation`              | identity      | initial transform                                                      |
-| `linearVelocity` / `angularVelocity` | zero          | initial velocities                                                     |
-| `linearDamping` / `angularDamping`   | `0`           | velocity damping                                                       |
-| `gravityScale`                       | `1`           | per-body gravity multiplier                                            |
-| `sleepThreshold`                     | Box3D default | speed below which the body may sleep                                   |
-| `enableSleep`                        | `true`        | allow this body to sleep                                               |
-| `isAwake`                            | `true`        | start awake                                                            |
-| `isBullet`                           | `false`       | continuous collision against other dynamic bodies too                  |
-| `isEnabled`                          | `true`        | start enabled                                                          |
-| `allowFastRotation`                  | `false`       | skip the angular speed clamp                                           |
-| `enableContactRecycling`             | Box3D default | reuse contact data between steps                                       |
-| `motionLocks`                        | none          | `{ linearX, linearY, linearZ, angularX, angularY, angularZ }` booleans |
-| `userData`                           | auto tag      | your numeric tag                                                       |
-| `name`                               | `''`          | debug name                                                             |
+Options follow `b3BodyDef`: `type`, `position`, `rotation`, `linearVelocity`, `angularVelocity`, `linearDamping`, `angularDamping`, `gravityScale`, `sleepThreshold`, `safetyFactor`, `enableSleep`, `isAwake`, `isBullet`, `isEnabled`, `allowFastRotation`, `enableContactRecycling`, `motionLocks`, `name`.
 
-| method                                                                                        | description                                                         |
-| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `getPosition()` / `getRotation()` / `getTransform()`                                          | current pose                                                        |
-| `setTransform(position, rotation)`                                                            | teleport; either argument may be omitted to keep the current value  |
-| `setTargetTransform(transform, timeStep, wake)`                                               | move a kinematic body by velocity so it still pushes things         |
-| `getLinearVelocity()` / `setLinearVelocity(v)`                                                | linear velocity                                                     |
-| `getAngularVelocity()` / `setAngularVelocity(v)`                                              | angular velocity                                                    |
-| `applyForce(force, worldPoint, wake)` / `applyForceToCenter(force, wake)`                     | forces for the next step                                            |
-| `applyTorque(torque, wake)`                                                                   | torque for the next step                                            |
-| `applyLinearImpulse(impulse, worldPoint, wake)` / `applyLinearImpulseToCenter(impulse, wake)` | instant velocity change                                             |
-| `applyAngularImpulse(impulse, wake)`                                                          | instant angular velocity change                                     |
-| `getMass()` / `applyMassFromShapes()`                                                         | mass is derived from shape densities; recompute after changing them |
-| `getLocalCenterOfMass()` / `getWorldCenterOfMass()`                                           | center of mass                                                      |
-| `getLocalPoint(worldPoint)` / `getWorldPoint(localPoint)`                                     | frame conversion                                                    |
-| `getLinearDamping()` / `setLinearDamping(d)` / `getAngularDamping()` / `setAngularDamping(d)` | damping                                                             |
-| `getGravityScale()` / `setGravityScale(s)`                                                    | per-body gravity                                                    |
-| `isAwake()` / `setAwake(flag)` / `enableSleep(flag)`                                          | sleep state                                                         |
-| `isEnabled()` / `setEnabled(flag)`                                                            | disabled bodies leave the simulation but keep their shapes          |
-| `isBullet()` / `setBullet(flag)`                                                              | continuous collision against dynamic bodies                         |
-| `getMotionLocks()` / `setMotionLocks(locks)`                                                  | lock axes, e.g. keep a character upright                            |
-| `getType()` / `setType(type)`                                                                 | body type as a string                                               |
-| `getName()` / `setName(name)` / `getUserData()` / `setUserData(tag)`                          | identification                                                      |
-| `getShapeCount()` / `computeAABB()`                                                           | `{ lowerBound, upperBound }` around all shapes                      |
-| `createBox(opts)` / `createSphere(opts)` / `createCapsule(opts)` / `createHull(opts)`         | see [Shapes](#shapes)                                               |
-| `isValid()` / `destroy()`                                                                     | destroying a body destroys its shapes and joints                    |
+| method                                                                                            | description                                                  |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `getType()` / `setType(type)`                                                                     | static, kinematic or dynamic                                 |
+| `getName()` / `setName(name)`                                                                     | debug name                                                   |
+| `getPosition(out?)` / `getRotation(out?)` / `getTransform(out?)`                                  | world pose                                                   |
+| `readTransform(outPosition, outRotation)`                                                         | the pose in one call, no allocation                          |
+| `setTransform(position, rotation)`                                                                | teleport                                                     |
+| `setTargetTransform(target, timeStep, wake?)`                                                     | move a kinematic body so it reaches the target over one step |
+| `getLinearVelocity(out?)` / `setLinearVelocity(v)` and the angular pair                           | velocities                                                   |
+| `applyForce(f, point, wake?)`, `applyForceToCenter`, `applyTorque`                                | forces                                                       |
+| `applyLinearImpulse(i, point, wake?)`, `applyLinearImpulseToCenter`, `applyAngularImpulse`        | impulses                                                     |
+| `getMass()`, `getMassData(out?)` / `setMassData(data)`, `applyMassFromShapes()`                   | mass, center and the full inertia tensor                     |
+| `getLocalCenterOfMass(out?)` / `getWorldCenterOfMass(out?)`                                       | centers                                                      |
+| `getLocalPoint` / `getWorldPoint` / `getLocalVector` / `getWorldVector`                           | space conversions                                            |
+| `get/setLinearDamping`, `get/setAngularDamping`, `get/setGravityScale`                            | damping and gravity                                          |
+| `isAwake()` / `setAwake(flag)`, `enableSleep(flag)` / `isSleepEnabled()`, `get/setSleepThreshold` | sleep                                                        |
+| `isEnabled()` / `setEnabled(flag)`                                                                | a disabled body neither moves nor collides                   |
+| `isBullet()` / `setBullet(flag)`, `allowFastRotation(flag)` / `isFastRotationAllowed()`           | continuous collision flags                                   |
+| `setMotionLocks(partial)` / `getMotionLocks()`                                                    | lock axes; fields left out keep their value                  |
+| `getShapeCount()`, `shapes`, `joints`, `computeAABB(out?)`                                        | what is attached, and the bounds                             |
+| `createSphere`, `createCapsule`, `createBox`, `createHull`                                        | see [Shapes](#shapes)                                        |
+| `isValid()` / `destroy()`                                                                         | destroying a body frees its shapes and joints                |
 
 ### Shapes
 
-Each creator takes one options object with the geometry plus the material and event fields below:
-
 ```ts
-body.createBox({ halfExtents: { x: 1, y: 0.5, z: 2 }, friction: 0.7 });
-body.createBox({ hx: 1, hy: 0.5, hz: 2, offset: { x: 0, y: 1, z: 0 } });
-body.createSphere({ radius: 0.5, restitution: 0.8 });
-body.createCapsule({ height: 1.2, radius: 0.3 });
+body.createSphere({ center: vec3(), radius: 0.5, density: 1 });
+body.createCapsule({ height: 1, radius: 0.25 }); // or center1 / center2
+body.createBox({
+  halfExtents: vec3(0.5, 0.5, 0.5),
+  offset: vec3(),
+  rotation: quat(),
+});
 body.createHull({
-  points: [
-    { x: -1, y: 0, z: -1 },
-    { x: 1, y: 0, z: -1 },
-    { x: 0, y: 1, z: 0 },
-    { x: 0, y: 0, z: 1 },
-  ],
+  points: [vec3(0, 0, 0), vec3(1, 0, 0), vec3(0, 1, 0), vec3(0, 0, 1)],
+  maxVertices: 32,
 });
 ```
 
-| geometry option                 | shape           | description                                            |
-| ------------------------------- | --------------- | ------------------------------------------------------ |
-| `halfExtents` or `hx`/`hy`/`hz` | box             | half sizes, default `0.5` each                         |
-| `offset` / `rotation`           | box             | place the box away from the body origin                |
-| `radius`                        | sphere, capsule | default `0.5`                                          |
-| `center`                        | sphere          | sphere center in body space                            |
-| `height`                        | capsule         | distance between the hemisphere centers, along local y |
-| `center1` / `center2`           | capsule         | explicit hemisphere centers when `height` is not given |
-| `points`                        | hull            | array of vectors; the convex hull is computed for you  |
-| `maxVertices`                   | hull            | hull simplification budget, default `32`               |
+Hull points may also be a flat `Float32Array` of xyz triples. Every creator accepts the `b3ShapeDef` fields: `density`, `friction`, `restitution`, `rollingResistance`, `tangentVelocity`, `explosionScale`, `userMaterialId`, `customColor`, `filter: { categoryBits, maskBits, groupIndex }`, `isSensor`, `enableSensorEvents`, `enableContactEvents`, `enableHitEvents`, `enablePreSolveEvents`, `invokeContactCreation`, `updateBodyMass`, `enableCustomFiltering`, `enableSpeculativeContact`. Events are off by default; enable them per shape.
 
-| material / event option | default       | description                                                      |
-| ----------------------- | ------------- | ---------------------------------------------------------------- |
-| `density`               | `1000`        | mass per volume (water); `0` makes a massless shape              |
-| `friction`              | Box3D default | Coulomb friction                                                 |
-| `restitution`           | `0`           | bounciness                                                       |
-| `rollingResistance`     | `0`           | slows rolling spheres and capsules                               |
-| `tangentVelocity`       | zero          | conveyor belt surface velocity                                   |
-| `userMaterialId`        | `0`           | your material id, reported nowhere yet but stored                |
-| `isSensor`              | `false`       | detect overlaps without collision response                       |
-| `enableSensorEvents`    | `false`       | let this shape be seen by sensors / report visitors if it is one |
-| `enableContactEvents`   | `false`       | report begin / end touch events                                  |
-| `enableHitEvents`       | `false`       | report impacts above `hitEventThreshold`                         |
-| `invokeContactCreation` | Box3D default | create contacts immediately for static shapes                    |
-| `updateBodyMass`        | `true`        | recompute the body mass after adding the shape                   |
-| `filter`                | collide all   | `{ categoryBits, maskBits, groupIndex }`, see below              |
-| `userData`              | auto tag      | your numeric tag                                                 |
-
-| method                                                                             | description                                                                  |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `getType()`                                                                        | `'sphere'`, `'capsule'`, `'hull'`, `'mesh'`, `'heightField'` or `'compound'` |
-| `getFriction()` / `setFriction(f)`                                                 | friction                                                                     |
-| `getRestitution()` / `setRestitution(r)`                                           | restitution                                                                  |
-| `getDensity()` / `setDensity(d, updateBodyMass)`                                   | density                                                                      |
-| `isSensor()`                                                                       | sensor flag                                                                  |
-| `enableSensorEvents(flag)` / `enableContactEvents(flag)` / `enableHitEvents(flag)` | event flags                                                                  |
-| `getFilter()` / `setFilter(filter)`                                                | collision filter                                                             |
-| `getAABB()`                                                                        | `{ lowerBound, upperBound }`                                                 |
-| `rayCast(origin, translation)`                                                     | `{ hit, point, normal, fraction }` against this shape only                   |
-| `getUserData()` / `setUserData(tag)`                                               | tag                                                                          |
-| `isValid()` / `destroy(updateBodyMass)`                                            | remove the shape from its body                                               |
-
-Collision filtering follows Box3D: two shapes collide when each one's `categoryBits` is in the other's `maskBits`, unless they share a non-zero `groupIndex`, in which case a positive group always collides and a negative group never does. Bits are plain numbers (up to 2^53).
+| method                                                                                           | description                                           |
+| ------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| `body`, `getType()`                                                                              | owner and kind (`sphere`, `capsule`, `hull`, …)       |
+| `get/setDensity(v, updateBodyMass?)`, `get/setFriction`, `get/setRestitution`                    | material                                              |
+| `get/setRollingResistance`, `get/setTangentVelocity`, `get/setUserMaterialId`                    | surface material                                      |
+| `isSensor()`, `enableSensorEvents` / `enableContactEvents` / `enableHitEvents` (+ `are*Enabled`) | event flags                                           |
+| `getFilter()` / `setFilter(partial, invokeContacts?)`                                            | collision filtering, fields left out keep their value |
+| `getAABB(out?)`, `computeMassData(out?)`                                                         | bounds and mass of this shape alone                   |
+| `rayCast(origin, translation)`                                                                   | hit against this shape alone (reused result)          |
+| `isValid()` / `destroy(updateBodyMass?)`                                                         | remove the shape from its body                        |
 
 ### Joints
 
-Every joint connects two bodies and is created on the world:
-
 ```ts
-const hinge = world.createRevoluteJoint(chassis, wheel, {
-  localFrameA: { position: { x: 1, y: 0, z: 1 } },
-  localFrameB: { position: { x: 0, y: 0, z: 0 } },
+const hinge = world.createRevoluteJoint(bodyA, bodyB, {
+  anchorA: vec3(0, 1, 0), // shorthand for localFrameA.position
+  localFrameB: { position: vec3(0, -1, 0), rotation: quat() },
+  enableLimit: true,
+  lowerAngle: -Math.PI / 4,
+  upperAngle: Math.PI / 4,
   enableMotor: true,
-  motorSpeed: 5,
+  motorSpeed: 2,
   maxMotorTorque: 100,
 });
+hinge.setMotorSpeed(-2);
 hinge.getAngle();
-hinge.setMotorSpeed(-5);
 ```
 
-Common options: `localFrameA` / `localFrameB` (`{ position, rotation }` in each body's space, identity by default), `anchorA` / `anchorB` (shorthand for just the frame positions), `collideConnected` (default `false`), `forceThreshold` / `torqueThreshold` (joint event thresholds).
-
-Common methods: `getType()`, `getLocalFrameA()` / `getLocalFrameB()`, `getCollideConnected()` / `setCollideConnected(flag)`, `getConstraintForce()` / `getConstraintTorque()`, `wakeBodies()`, `isValid()`, `destroy(wakeAttached)`.
-
-| joint                  | creation options                                                                                                                                                                                                                                                                                                                                                          | runtime methods                                                                                                                                                                                                                                                                                                                                                                      |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `createDistanceJoint`  | `length`, `enableSpring`, `hertz`, `dampingRatio`, `lowerSpringForce`, `upperSpringForce`, `enableLimit`, `minLength`, `maxLength`, `enableMotor`, `maxMotorForce`, `motorSpeed`                                                                                                                                                                                          | `getLength` / `setLength`, `getCurrentLength`, `enableSpring`, `setSpringHertz`, `setSpringDampingRatio`, `enableLimit`, `setLengthRange`, `enableMotor`, `setMotorSpeed`, `setMaxMotorForce`                                                                                                                                                                                        |
-| `createRevoluteJoint`  | `targetAngle`, `enableSpring`, `hertz`, `dampingRatio`, `enableLimit`, `lowerAngle`, `upperAngle`, `enableMotor`, `maxMotorTorque`, `motorSpeed`                                                                                                                                                                                                                          | `getAngle`, `enableSpring`, `setSpringHertz`, `setSpringDampingRatio`, `setTargetAngle`, `enableLimit`, `setLimits`, `enableMotor`, `setMotorSpeed`, `setMaxMotorTorque`, `getMotorTorque`                                                                                                                                                                                           |
-| `createSphericalJoint` | `enableSpring`, `hertz`, `dampingRatio`, `targetRotation`, `enableConeLimit`, `coneAngle`, `enableTwistLimit`, `lowerTwistAngle`, `upperTwistAngle`, `enableMotor`, `maxMotorTorque`, `motorVelocity`                                                                                                                                                                     | `enableConeLimit`, `setConeLimit`, `getConeAngle`, `enableTwistLimit`, `setTwistLimits`, `getTwistAngle`, `enableSpring`, `setSpringHertz`, `setSpringDampingRatio`, `setTargetRotation`, `enableMotor`, `setMotorVelocity`, `setMaxMotorTorque`                                                                                                                                     |
-| `createPrismaticJoint` | `enableSpring`, `hertz`, `dampingRatio`, `targetTranslation`, `enableLimit`, `lowerTranslation`, `upperTranslation`, `enableMotor`, `maxMotorForce`, `motorSpeed`                                                                                                                                                                                                         | `getTranslation`, `getSpeed`, `enableSpring`, `setSpringHertz`, `setSpringDampingRatio`, `setTargetTranslation`, `enableLimit`, `setLimits`, `enableMotor`, `setMotorSpeed`, `setMaxMotorForce`                                                                                                                                                                                      |
-| `createWeldJoint`      | `linearHertz`, `angularHertz`, `linearDampingRatio`, `angularDampingRatio`                                                                                                                                                                                                                                                                                                | `setLinearHertz`, `setLinearDampingRatio`, `setAngularHertz`, `setAngularDampingRatio`                                                                                                                                                                                                                                                                                               |
-| `createMotorJoint`     | `linearVelocity`, `maxVelocityForce`, `angularVelocity`, `maxVelocityTorque`, `linearHertz`, `linearDampingRatio`, `maxSpringForce`, `angularHertz`, `angularDampingRatio`, `maxSpringTorque`                                                                                                                                                                             | `setLinearVelocity`, `setAngularVelocity`, `setMaxVelocityForce`, `setMaxVelocityTorque`, `setLinearHertz`, `setLinearDampingRatio`, `setAngularHertz`, `setAngularDampingRatio`, `setMaxSpringForce`, `setMaxSpringTorque`                                                                                                                                                          |
-| `createWheelJoint`     | `enableSuspensionSpring`, `suspensionHertz`, `suspensionDampingRatio`, `enableSuspensionLimit`, `lowerSuspensionLimit`, `upperSuspensionLimit`, `enableSpinMotor`, `maxSpinTorque`, `spinSpeed`, `enableSteering`, `steeringHertz`, `steeringDampingRatio`, `targetSteeringAngle`, `maxSteeringTorque`, `enableSteeringLimit`, `lowerSteeringLimit`, `upperSteeringLimit` | `enableSuspension`, `setSuspensionHertz`, `setSuspensionDampingRatio`, `enableSuspensionLimit`, `setSuspensionLimits`, `enableSpinMotor`, `setSpinMotorSpeed`, `setMaxSpinTorque`, `getSpinSpeed`, `enableSteering`, `setSteeringHertz`, `setSteeringDampingRatio`, `setMaxSteeringTorque`, `enableSteeringLimit`, `setSteeringLimits`, `setTargetSteeringAngle`, `getSteeringAngle` |
-| `createParallelJoint`  | `hertz`, `dampingRatio`, `maxTorque`                                                                                                                                                                                                                                                                                                                                      | `setSpringHertz`, `setSpringDampingRatio`, `setMaxTorque`                                                                                                                                                                                                                                                                                                                            |
-| `createFilterJoint`    | common options only                                                                                                                                                                                                                                                                                                                                                       | common methods only; disables collision between the two bodies                                                                                                                                                                                                                                                                                                                       |
+`createDistanceJoint`, `createRevoluteJoint`, `createSphericalJoint`, `createPrismaticJoint`, `createWeldJoint`, `createMotorJoint`, `createWheelJoint`, `createParallelJoint` and `createFilterJoint` each take the base options (`localFrameA`, `localFrameB`, `anchorA`, `anchorB`, `collideConnected`, `forceThreshold`, `torqueThreshold`, `constraintHertz`, `constraintDampingRatio`, `drawScale`) plus their `b3<Type>JointDef` fields, and return a class with that type's setters and getters: springs, limits, motors, targets, suspension and steering on wheels, cone and twist on spherical joints. Every joint has `bodyA`, `bodyB`, `getType()`, `wakeBodies()`, `get/setCollideConnected`, `get/setLocalFrameA/B`, `getConstraintForce(out?)`, `getConstraintTorque(out?)`, `get/setConstraintTuning`, `get/setForceThreshold`, `get/setTorqueThreshold`, `getLinearSeparation()`, `getAngularSeparation()`, `isValid()` and `destroy(wakeAttached?)`.
 
 ### Queries
 
 ```ts
-const hit = world.castRayClosest(origin, translation, { maskBits: 0xffff });
+const hit = world.castRayClosest(vec3(0, 10, 0), vec3(0, -20, 0), {
+  maskBits: 0xffff,
+});
 if (hit.hit) {
   hit.point; // world point
   hit.normal; // surface normal
-  hit.fraction; // 0..1 along translation
-  hit.shapeUserData; // tags to look your objects up with
-  hit.bodyUserData;
-  hit.shape.delete(); // a Shape handle; free it when done
+  hit.fraction; // along the translation
+  hit.shape; // Shape
+  hit.body; // Body
 }
-
-world.explode({
-  position: { x: 0, y: 1, z: 0 },
-  radius: 3,
-  falloff: 2,
-  impulsePerArea: 10,
-  maskBits: 0xffff, // optional, which shape categories are affected
-});
 ```
 
-`castRayClosest` casts from `origin` along `translation` (direction and length in one vector) and returns `{ hit: false }` or the fields above. The filter argument is optional and takes `categoryBits` / `maskBits`. `shape.rayCast(origin, translation)` does the same against a single shape and returns `{ hit, point, normal, fraction }`.
+The result object belongs to the world and is overwritten by the next cast; copy what you keep. `shape.rayCast(origin, translation)` does the same against one shape.
 
 ### Events
 
-Events are collected during `step()` and read back as plain arrays afterwards. Read them every step; the next step overwrites them.
+Each `get*Events()` call fills a reader the world owns and returns it. Read it before the next step; indexes are `0 ≤ i < count`.
 
-```ts
-world.step(1 / 60, 4);
+| reader                                            | records                                                                                                                                         |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `getMoveEvents()`                                 | `bodyAt(i)`, `copyPositionTo(i, out)`, `copyRotationTo(i, out)`, `fellAsleepAt(i)`; sleeping bodies do not appear                               |
+| `getContactBeginEvents()`                         | `shapeAAt`, `shapeBAt`, `bodyAAt`, `bodyBAt`, `copyPointTo`, `copyNormalTo` (A to B), `totalNormalImpulseAt`, `pointCountAt`, `manifoldCountAt` |
+| `getContactEndEvents()`                           | the four handle accessors; a shape destroyed this step reads as `undefined`                                                                     |
+| `getContactHitEvents()`                           | handles, `copyPointTo`, `copyNormalTo`, `approachSpeedAt`; above the world's `hitEventThreshold`                                                |
+| `getSensorBeginEvents()` / `getSensorEndEvents()` | `sensorShapeAt`, `visitorShapeAt`, `sensorBodyAt`, `visitorBodyAt`                                                                              |
+| `getJointEvents()`                                | `jointAt(i)`; joints past their force or torque threshold                                                                                       |
 
-for (const e of world.getBodyEvents()) {
-  // { userData, position, rotation, fellAsleep } for every body that moved
-  meshes.get(e.userData)?.position.copy(e.position);
-}
-
-const contacts = world.getContactEvents();
-contacts.begin; // [{ shapeUserDataA, shapeUserDataB }]
-contacts.end; // [{ shapeUserDataA, shapeUserDataB }]  (null when the shape was destroyed)
-contacts.hit; // [{ shapeUserDataA, shapeUserDataB, point, normal, approachSpeed }]
-
-const sensors = world.getSensorEvents();
-sensors.begin; // [{ sensorUserData, visitorUserData }]
-sensors.end; // [{ sensorUserData, visitorUserData }]  (null when the shape was destroyed)
-```
-
-Body move events are always on. Contact begin / end events need `enableContactEvents` on at least one of the two shapes, hit events need `enableHitEvents` and an approach speed above the world's `hitEventThreshold`, and sensor events need a shape created with `isSensor: true` plus `enableSensorEvents: true` on the visitors you want it to notice.
-
-### Memory
-
-Objects returned by the binding are embind handles. Two different calls free two different things:
-
-- `.destroy()` removes the world, body, shape or joint from the simulation. Destroying a world frees every object inside it; destroying a body frees its shapes and joints.
-- `.delete()` frees the JS-side handle. Handles are tiny, but each one you keep is a small leak until deleted, and that includes the `shape` returned by `castRayClosest`. Handles also implement `Symbol.dispose`, so `using shape = body.createBox(...)` works where explicit resource management is available.
-
-A handle whose object was destroyed reports `isValid() === false`; calling anything else on it is undefined behaviour, as in Box3D itself.
-
-### TypeScript
-
-`dist/box3d.d.ts` and `dist/box3d.deluxe.d.ts` are generated by emscripten from the embind registrations at build time, so they always match the compiled binding, and the package `exports` point at them. Parameters that take plain objects (vectors, quaternions, option bags) are typed as `any` for now.
+Every reader also exposes `f32`, `base` and `stride` for reading the records in place.
 
 ## Development
 
@@ -428,9 +335,11 @@ Requires [emsdk](https://emscripten.org/docs/getting_started/downloads.html) (te
 ```bash
 nvm use            # picks the Node version from .nvmrc
 pnpm install       # also fetches the pinned Box3D source (the @erincatto/box3d git dependency)
-pnpm build         # builds standard and deluxe flavours plus their .d.ts into dist/
+pnpm build         # both wasm flavours (csrc -> src/wasm) and the TypeScript frontend into dist/
+pnpm test          # vitest, every suite against both flavours, plus the type tests
+pnpm typecheck     # tsc over src, tests and bench
+pnpm bench         # step, move-event sync and ray cast timings; pass deluxe 4 for threads
 pnpm dev           # three.js demo at http://localhost:5173/box3d-wasm/
-pnpm test
 pnpm lint          # eslint + prettier + clang-format
 pnpm fix           # auto-fixes what the linters can
 ```
@@ -439,7 +348,7 @@ Commits follow the [Angular convention](https://github.com/angular/angular/blob/
 
 ### Tracking Box3D
 
-Box3D is pinned as a git dependency in `package.json` (`@erincatto/box3d`: `github:erincatto/box3d#<commit>`). Renovate opens a pull request whenever Box3D's `main` moves; CI rebuilds both flavours and runs the tests against the new commit, and a green build is merged and released automatically. A Box3D change that breaks the binding fails CI and waits for a fix in `csrc/glue.cpp`.
+Box3D is pinned as a git dependency in `package.json` (`@erincatto/box3d`: `github:erincatto/box3d#<commit>`). Renovate opens a pull request whenever Box3D's `main` moves; CI rebuilds both flavours and runs the tests against the new commit, and a green build is merged and released automatically. A Box3D change that breaks the binding fails CI and waits for a fix in `csrc/`.
 
 ## Questions
 
