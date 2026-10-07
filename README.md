@@ -20,7 +20,7 @@
   ·
   <a href="#api">API</a>
   ·
-  <a href="https://box3d.netlify.app/" target="_blank">Demo</a>
+  <a href="https://frsource.github.io/box3d-wasm/" target="_blank">Demo</a>
   ·
   <a href="https://github.com/FRSOURCE/box3d-wasm/issues">File an Issue</a>
   ·
@@ -43,7 +43,7 @@
 
 Box3D is a 3D rigid body physics engine written by [Erin Catto](https://github.com/erincatto), the author of Box2D. All engine design and implementation credit belongs to him; this package compiles his library to wasm and adds a JavaScript binding layer.
 
-This is a fork of [monteslu/box3d-wasm](https://github.com/monteslu/box3d-wasm) published under the `@frsource` npm scope. It is where the bindings needed by [`@frsource/babylon-box3d`](https://github.com/FRSOURCE/babylon-box3d) are added. See it in action in the [live three.js demo](https://box3d.netlify.app/) ([source](https://github.com/monteslu/threejs-box3d-demo)) with ragdolls, dominoes and a drivable buggy.
+This is a fork of [monteslu/box3d-wasm](https://github.com/monteslu/box3d-wasm) published under the `@frsource` npm scope. It is where the bindings needed by [`@frsource/babylon-box3d`](https://github.com/FRSOURCE/babylon-box3d) are added. See it in action in the [live three.js demo](https://frsource.github.io/box3d-wasm/) ([source](docs/)) with ragdolls, dominoes, a drivable buggy, terrain, a multithreaded stress test and a joint gallery. The classic scenes are adapted from [monteslu's threejs-box3d-demo](https://github.com/monteslu/threejs-box3d-demo).
 
 ## Quick start
 
@@ -121,6 +121,26 @@ Cross-Origin-Embedder-Policy: require-corp
 ```
 
 Node.js needs no special setup; worker threads are used automatically.
+
+## Demo
+
+[frsource.github.io/box3d-wasm](https://frsource.github.io/box3d-wasm/) is a three.js showcase built in `docs/` against this package. It runs the threaded (`deluxe`) build on GitHub Pages by registering a small service worker that adds the cross-origin isolation headers the host cannot send, and falls back to the single-threaded build when that is not possible.
+
+Run it locally (the dev server sends the isolation headers itself, so no service worker is involved):
+
+```bash
+pnpm build                                   # the demo links the library from dist/
+pnpm --filter @frsource/box3d-wasm-demo dev  # or: pnpm dev
+```
+
+| URL parameter   | effect                                                                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `?scene=stress` | start on a scene (`playground`, `pyramid`, `ragdolls`, `dominoes`, `bridge`, `driving`, `terrain`, `compound`, `stress`, `picking`, `casts`, `joints`) |
+| `?threads=0`    | force the single-threaded build                                                                                                                        |
+| `?threads=4`    | threaded build with four workers (clamped to `maxWorkers`)                                                                                             |
+| `?ff=600`       | fast-forward that many steps before the first frame                                                                                                    |
+
+The threads toggle and worker slider in the bottom-left corner change the same parameters. The six classic scenes are adapted from [monteslu's threejs-box3d-demo](https://github.com/monteslu/threejs-box3d-demo); the cross-origin isolation service worker follows the approach from [pryme8's babylon-box3d demo](https://github.com/pryme8/babylon-box3d).
 
 ## API
 
@@ -409,6 +429,7 @@ Requires [emsdk](https://emscripten.org/docs/getting_started/downloads.html) (te
 nvm use            # picks the Node version from .nvmrc
 pnpm install       # also fetches the pinned Box3D source (the @erincatto/box3d git dependency)
 pnpm build         # builds standard and deluxe flavours plus their .d.ts into dist/
+pnpm dev           # three.js demo at http://localhost:5173/box3d-wasm/
 pnpm test
 pnpm lint          # eslint + prettier + clang-format
 pnpm fix           # auto-fixes what the linters can

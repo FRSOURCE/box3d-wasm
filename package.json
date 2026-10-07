@@ -31,7 +31,9 @@
   "scripts": {
     "build": "bash scripts/build.sh",
     "build:debug": "TARGET_TYPE=Debug bash scripts/build.sh",
-    "test": "node --test \"test/*.test.mjs\"",
+    "dev": "pnpm --filter @frsource/box3d-wasm-demo dev",
+    "test": "vitest run",
+    "typecheck": "pnpm --filter @frsource/box3d-wasm-demo typecheck",
     "prepublishOnly": "pnpm test",
     "prepack": "pnpm build",
     "lint": "eslint . && prettier . --check && pnpm lint:native",
@@ -39,7 +41,8 @@
     "fix": "eslint . --fix && prettier . --write && clang-format -i csrc/*.cpp",
     "release": "semantic-release",
     "release:ci": "pnpm release --yes",
-    "release:test": "pnpm release --no-git-tag-version --no-push --skip-npm"
+    "release:test": "pnpm release --no-git-tag-version --no-push --skip-npm",
+    "test:dev": "vitest"
   },
   "keywords": [
     "physics",
@@ -77,7 +80,8 @@
     "globals": "17.13.0",
     "prettier": "3.9.9",
     "semantic-release": "25.0.9",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
   },
   "packageManager": "pnpm@12.5.1",
   "contributors": [

@@ -1,3 +1,10 @@
+packages:
+  - '.'
+  - 'docs'
+
+allowBuilds:
+  esbuild: true
+
 minimumReleaseAgeExclude:
   - '@frsource/eslint-config@1.86.0'
   - '@frsource/prettier-config@1.48.0'
