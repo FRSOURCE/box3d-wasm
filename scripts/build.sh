@@ -104,7 +104,7 @@ for FLAVOUR in $FLAVOURS; do
   echo "==> emcc link ($FLAVOUR) -> dist/$BASENAME.mjs"
   # --emit-tsd derives dist/$BASENAME.d.ts from the embind registrations, so
   # the published types can never drift from the compiled binding.
-  emcc "$ROOT/csrc/glue.cpp" "$ROOT/csrc/flat.cpp" "$LIB" \
+  emcc "$ROOT/csrc/glue.cpp" "$LIB" \
     -I "$BOX3D_SRC/include" \
     "${EMCC_OPTS[@]}" \
     "${FLAVOUR_FLAGS[@]:-}" \
@@ -113,17 +113,6 @@ for FLAVOUR in $FLAVOURS; do
 done
 
 cp "$ROOT/src/entry.mjs" "$ROOT/src/entry.d.ts" "$ROOT/dist/"
-
-# The isomorphic surface: the shared TS frontend (type-STRIPPED, not
-# transformed -- the same file must compile under a native host's static
-# dialect, so nothing here may depend on tsc semantics), its wasm backend,
-# and the iso entry that wires them to a flavour.
-echo "==> frontend (shared TS -> dist/frontend.js)"
-node node_modules/typescript/bin/tsc --ignoreConfig "$ROOT/src/frontend.ts" \
-  --target es2022 --module esnext --moduleResolution bundler \
-  --outDir "$ROOT/dist" --declaration false --skipLibCheck
-cp "$ROOT/src/backend-wasm.mjs" "$ROOT/dist/backend.js"
-cp "$ROOT/src/iso.mjs" "$ROOT/dist/iso.mjs"
 
 echo "==> done"
 ls -la "$ROOT/dist"
