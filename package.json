@@ -17,7 +17,6 @@
       "types": "./dist/box3d.deluxe.d.ts",
       "default": "./dist/box3d.deluxe.mjs"
     },
-    "./iso": "./dist/iso.mjs",
     "./package.json": "./package.json"
   },
   "files": [
