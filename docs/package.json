@@ -1,0 +1,22 @@
+{
+  "name": "@frsource/box3d-wasm-demo",
+  "version": "0.0.1",
+  "private": true,
+  "description": "three.js showcase of @frsource/box3d-wasm; scenes adapted from monteslu/threejs-box3d-demo",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@frsource/box3d-wasm": "workspace:*",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "0.186.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.3"
+  }
+}

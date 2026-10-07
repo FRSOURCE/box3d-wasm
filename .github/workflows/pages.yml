@@ -1,0 +1,53 @@
+name: Deploy demo to GitHub Pages
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      # No actions-cache-folder: that would put emsdk inside the workspace, and
+      # emcc --emit-tsd runs tsc from the emsdk directory, where TypeScript 6
+      # refuses (TS5112) once it finds a tsconfig.json in a parent directory.
+      - uses: mymindstorm/setup-emsdk@v16
+        with:
+          version: 6.0.2
+      # also fetches the pinned Box3D source: the @erincatto/box3d git dependency
+      - run: pnpm install --frozen-lockfile
+      # the demo links the library via workspace:* -> dist/, so build it first
+      - run: pnpm build
+      - run: pnpm --filter @frsource/box3d-wasm-demo build
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: docs/dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

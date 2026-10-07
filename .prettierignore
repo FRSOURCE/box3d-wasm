@@ -3,3 +3,4 @@
 pnpm-lock.yaml
 CHANGELOG.md
 .clang-format
+**/docs/dist
