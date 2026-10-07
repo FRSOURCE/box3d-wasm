@@ -31,7 +31,9 @@
   "scripts": {
     "build": "bash scripts/build.sh",
     "build:debug": "TARGET_TYPE=Debug bash scripts/build.sh",
+    "dev": "pnpm --filter @frsource/box3d-wasm-demo dev",
     "test": "vitest run",
+    "typecheck": "pnpm --filter @frsource/box3d-wasm-demo typecheck",
     "prepublishOnly": "pnpm test",
     "prepack": "pnpm build",
     "lint": "eslint . && prettier . --check && pnpm lint:native",

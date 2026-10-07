@@ -69,6 +69,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm test
+      - run: pnpm typecheck
+      - run: pnpm --filter @frsource/box3d-wasm-demo build
       - uses: actions/upload-artifact@v7
         with:
           name: dist
