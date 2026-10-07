@@ -928,12 +928,12 @@ struct Body
 
 	val getLocalCenterOfMass() const
 	{
-		return fromVec3( b3Body_GetLocalCenterOfMass( id ) );
+		return fromVec3( b3Body_GetLocalCenter( id ) );
 	}
 
 	val getWorldCenterOfMass() const
 	{
-		return fromVec3( b3Body_GetWorldCenterOfMass( id ) );
+		return fromVec3( b3Body_GetWorldCenter( id ) );
 	}
 
 	val getLocalPoint( val worldPoint ) const

@@ -20,10 +20,12 @@ ROOT="$(dirname "$DIR")"
 
 FLAVOURS="${FLAVOURS:-standard deluxe}"
 TARGET_TYPE="${TARGET_TYPE:-Release}"
-BOX3D_SRC="$ROOT/deps/box3d"
+# Box3D is a git dependency in package.json (github:erincatto/box3d#<sha>), so
+# pnpm puts its source tree here. Renovate bumps the pinned commit.
+BOX3D_SRC="$ROOT/node_modules/@erincatto/box3d"
 
 if [ ! -f "$BOX3D_SRC/CMakeLists.txt" ]; then
-  echo "deps/box3d missing. Run: npm run fetch-deps" >&2
+  echo "node_modules/@erincatto/box3d missing. Run: pnpm install" >&2
   exit 1
 fi
 
@@ -62,7 +64,7 @@ for FLAVOUR in $FLAVOURS; do
     > "$CMAKE_BUILD_DIR.cmake.log" 2>&1 || { cat "$CMAKE_BUILD_DIR.cmake.log" >&2; exit 1; }
 
   echo "==> build libbox3d.a ($FLAVOUR)"
-  cmake --build "$CMAKE_BUILD_DIR" -j"$(nproc)" > "$CMAKE_BUILD_DIR.build.log" 2>&1 \
+  cmake --build "$CMAKE_BUILD_DIR" -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu)" > "$CMAKE_BUILD_DIR.build.log" 2>&1 \
     || { tail -50 "$CMAKE_BUILD_DIR.build.log" >&2; exit 1; }
 
   LIB="$CMAKE_BUILD_DIR/src/libbox3d.a"
@@ -100,14 +102,17 @@ for FLAVOUR in $FLAVOURS; do
   esac
 
   echo "==> emcc link ($FLAVOUR) -> dist/$BASENAME.mjs"
+  # --emit-tsd derives dist/$BASENAME.d.ts from the embind registrations, so
+  # the published types can never drift from the compiled binding.
   emcc "$ROOT/csrc/glue.cpp" "$ROOT/csrc/flat.cpp" "$LIB" \
     -I "$BOX3D_SRC/include" \
     "${EMCC_OPTS[@]}" \
     "${FLAVOUR_FLAGS[@]:-}" \
+    --emit-tsd "$BASENAME.d.ts" \
     -o "$ROOT/dist/$BASENAME.mjs"
 done
 
-cp "$ROOT/src/entry.mjs" "$ROOT/dist/entry.mjs"
+cp "$ROOT/src/entry.mjs" "$ROOT/src/entry.d.ts" "$ROOT/dist/"
 
 # The isomorphic surface: the shared TS frontend (type-STRIPPED, not
 # transformed -- the same file must compile under a native host's static

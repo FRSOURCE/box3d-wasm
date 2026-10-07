@@ -166,6 +166,9 @@ importers:
 
   .:
     devDependencies:
+      '@erincatto/box3d':
+        specifier: github:erincatto/box3d#e77352cd606dc1a34209094076199549a52ea0a1
+        version: https://codeload.github.com/erincatto/box3d/tar.gz/e77352cd606dc1a34209094076199549a52ea0a1
       '@frsource/eslint-config':
         specifier: 1.86.0
         version: 1.86.0(eslint@10.12.0(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)
@@ -225,6 +228,10 @@ packages:
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
+
+  '@erincatto/box3d@https://codeload.github.com/erincatto/box3d/tar.gz/e77352cd606dc1a34209094076199549a52ea0a1':
+    resolution: {gitHosted: true, integrity: sha512-Vig3o/9xfDY7G14TUCUVVgOFn2k1ORokJjelyafyZiSWT6566MSeHjKrhBnHL3bkrF3wUIWSHm49bRDixjsAjw==, tarball: https://codeload.github.com/erincatto/box3d/tar.gz/e77352cd606dc1a34209094076199549a52ea0a1}
+    version: 0.0.0
 
   '@eslint-community/eslint-utils@4.10.1':
     resolution: {integrity: sha512-cuadcxVFE8sDK6iWJbs8Sn0av2Nrh2QSGQhVlBW9AaAHqHwjWsZHT8LJ4hFGPh7ASBV2deFdM7H/DPjulmh8rg==}
@@ -1896,6 +1903,8 @@ snapshots:
 
   '@colors/colors@1.5.0':
     optional: true
+
+  '@erincatto/box3d@https://codeload.github.com/erincatto/box3d/tar.gz/e77352cd606dc1a34209094076199549a52ea0a1': {}
 
   '@eslint-community/eslint-utils@4.10.1(eslint@10.12.0(supports-color@7.2.0))':
     dependencies:

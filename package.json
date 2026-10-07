@@ -1,15 +1,24 @@
 {
-  "name": "box3d-wasm",
+  "name": "@frsource/box3d-wasm",
   "version": "0.2.0",
   "description": "Box3D, Erin Catto's 3D physics engine, compiled to WebAssembly with SIMD and optional wasm threads. Isomorphic: works in browsers and Node.js, auto-detecting thread support.",
   "type": "module",
   "main": "dist/entry.mjs",
   "exports": {
-    ".": "./dist/entry.mjs",
-    "./standard": "./dist/box3d.mjs",
-    "./deluxe": "./dist/box3d.deluxe.mjs",
-    "./package.json": "./package.json",
-    "./iso": "./dist/iso.mjs"
+    ".": {
+      "types": "./dist/entry.d.ts",
+      "default": "./dist/entry.mjs"
+    },
+    "./standard": {
+      "types": "./dist/box3d.d.ts",
+      "default": "./dist/box3d.mjs"
+    },
+    "./deluxe": {
+      "types": "./dist/box3d.deluxe.d.ts",
+      "default": "./dist/box3d.deluxe.mjs"
+    },
+    "./iso": "./dist/iso.mjs",
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
@@ -21,11 +30,11 @@
     "node": ">=22"
   },
   "scripts": {
-    "fetch-deps": "bash scripts/fetch-deps.sh",
     "build": "bash scripts/build.sh",
     "build:debug": "TARGET_TYPE=Debug bash scripts/build.sh",
     "test": "node --test \"test/*.test.mjs\"",
     "prepublishOnly": "pnpm test",
+    "prepack": "pnpm build",
     "lint": "eslint . && prettier . --check && pnpm lint:native",
     "lint:native": "clang-format --dry-run --Werror csrc/*.cpp",
     "fix": "eslint . --fix && prettier . --write && clang-format -i csrc/*.cpp",
@@ -50,13 +59,17 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/monteslu/box3d-wasm.git"
+    "url": "git+https://github.com/FRSOURCE/box3d-wasm.git"
   },
   "bugs": {
-    "url": "https://github.com/monteslu/box3d-wasm/issues"
+    "url": "https://github.com/FRSOURCE/box3d-wasm/issues"
   },
-  "homepage": "https://github.com/monteslu/box3d-wasm#readme",
+  "homepage": "https://github.com/FRSOURCE/box3d-wasm#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
+    "@erincatto/box3d": "github:erincatto/box3d#e77352cd606dc1a34209094076199549a52ea0a1",
     "@frsource/eslint-config": "1.86.0",
     "@frsource/prettier-config": "1.48.0",
     "@frsource/semantic-release-config": "1.117.1",
@@ -67,5 +80,9 @@
     "semantic-release": "25.0.9",
     "typescript": "6.0.3"
   },
-  "packageManager": "pnpm@12.5.1"
+  "packageManager": "pnpm@12.5.1",
+  "contributors": [
+    "Jakub Freisler <jakub.freisler@frsource.org> (https://www.frsource.org/)"
+  ],
+  "types": "dist/entry.d.ts"
 }
