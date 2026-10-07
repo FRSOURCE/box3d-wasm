@@ -21,3 +21,6 @@ logs
 # dotenv environment variables file
 .env
 .env.*
+
+# emcc output, rebuilt by scripts/build.sh
+src/wasm/

@@ -14,7 +14,7 @@ export interface SceneInstance {
   bodyCount(): number;
   /** Copies body poses onto meshes; called once per rendered frame after stepping. */
   sync(): void;
-  /** Removes meshes and frees JS handles; the world itself is destroyed by the caller. */
+  /** Removes meshes; bodies die with the world, which the caller destroys. */
   dispose(): void;
 }
 
