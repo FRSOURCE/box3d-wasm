@@ -17,3 +17,6 @@ export function hi32(value: Bits): number {
 export function join64(lo: number, hi: number): Bits {
   return hi === 0 ? lo >>> 0 : (BigInt(hi >>> 0) << 32n) | BigInt(lo >>> 0);
 }
+
+/** One u32 word with every bit set: the default for category and mask filters. */
+export const ALL_BITS_WORD = 0xffffffff;

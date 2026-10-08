@@ -44,7 +44,9 @@
     "fix": "eslint . --fix && prettier . --write && clang-format -i csrc/*.c csrc/*.h",
     "release": "semantic-release",
     "release:ci": "pnpm release --yes",
-    "release:test": "pnpm release --no-git-tag-version --no-push --skip-npm"
+    "release:test": "pnpm release --no-git-tag-version --no-push --skip-npm",
+    "parity:update": "node scripts/parity/update.mjs && prettier --write parity",
+    "parity:strict": "PARITY_STRICT=1 vitest run --project standard test/parity.test.ts"
   },
   "keywords": [
     "physics",

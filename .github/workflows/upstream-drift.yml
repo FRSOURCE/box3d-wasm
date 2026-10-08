@@ -1,0 +1,61 @@
+name: Upstream drift
+# Runs the parity gate against Box3D's latest commit and opens an issue when the
+# binding no longer covers it. Renovate also bumps the pin; this catches changes
+# between its runs and explains what moved.
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    name: parity against upstream main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: point the pinned dependency at upstream main
+        id: upstream
+        run: |
+          sha="$(git ls-remote https://github.com/erincatto/box3d HEAD | cut -f1)"
+          current="$(node -p "require('./package.json').devDependencies['@erincatto/box3d'].split('#')[1]")"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          if [ "$sha" = "$current" ]; then echo "same=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "same=false" >> "$GITHUB_OUTPUT"
+          pnpm add -D "github:erincatto/box3d#$sha"
+      - name: run the parity gate
+        id: gate
+        if: steps.upstream.outputs.same == 'false'
+        continue-on-error: true
+        run: |
+          # the manifest still describes the old pin: compare engine contents, not the sha
+          node -e "const m=require('./parity/manifest.json');m.engineSha='$(node -p "require('./package.json').devDependencies['@erincatto/box3d'].split('#')[1]")';require('fs').writeFileSync('parity/manifest.json',JSON.stringify(m))"
+          pnpm vitest run --project standard test/parity.test.ts 2>&1 | tee parity.log
+          exit "${PIPESTATUS[0]}"
+      - name: open an issue when the binding no longer covers upstream
+        if: steps.gate.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "Box3D \`main\` is at \`${{ steps.upstream.outputs.sha }}\`; the binding is pinned at \`${{ steps.upstream.outputs.current }}\`."
+            echo
+            echo "The parity gate fails against the new commit. Follow the \`update-box3d\` skill (\`.claude/skills/update-box3d\`)."
+            echo
+            echo '```'
+            grep -E "FAIL|AssertionError|^\s+[-+] " parity.log | head -80
+            echo '```'
+          } > body.md
+          gh issue create --title "Box3D drift: binding does not cover ${{ steps.upstream.outputs.sha }}" \
+            --body-file body.md --label upstream-drift || \
+          gh issue create --title "Box3D drift: binding does not cover ${{ steps.upstream.outputs.sha }}" --body-file body.md

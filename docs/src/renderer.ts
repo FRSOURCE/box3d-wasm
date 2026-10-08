@@ -1,11 +1,12 @@
 import {
+  Color,
   DirectionalLight,
   HemisphereLight,
+  PCFShadowMap,
   PerspectiveCamera,
   Scene,
-  Color,
+  Vector3,
   WebGLRenderer,
-  PCFShadowMap,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { element } from './utils';
@@ -24,39 +25,41 @@ export const camera = new PerspectiveCamera(
   60,
   innerWidth / innerHeight,
   0.1,
-  500,
+  2000,
 );
 
 export const controls = new OrbitControls(camera, canvas);
-controls.enableDamping = true;
-controls.maxPolarAngle = Math.PI / 2 - 0.02;
 
 scene.add(new HemisphereLight('#cdd6f4', '#1e2030', 0.9));
 
+const SUN_OFFSET = new Vector3(20, 40, 15);
 const sun = new DirectionalLight('#ffffff', 2.2);
-sun.position.set(20, 40, 15);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-// a fixed ortho frustum stops the shadow map shimmering as bodies move
-const shadowSize = 40;
-sun.shadow.camera.left = -shadowSize;
-sun.shadow.camera.right = shadowSize;
-sun.shadow.camera.top = shadowSize;
-sun.shadow.camera.bottom = -shadowSize;
 sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 120;
+sun.shadow.camera.far = 300;
 sun.shadow.bias = -0.0005;
-scene.add(sun);
+scene.add(sun, sun.target);
+fitShadows(40);
 
-export interface CameraPreset {
-  position: [number, number, number];
-  target: [number, number, number];
+/**
+ * Sizes the orthographic shadow frustum (half-extent in metres). Upstream fits
+ * its shadow cascade to the world bounds on every sample switch.
+ */
+export function fitShadows(halfExtent: number): void {
+  const cam = sun.shadow.camera;
+  cam.left = -halfExtent;
+  cam.right = halfExtent;
+  cam.top = halfExtent;
+  cam.bottom = -halfExtent;
+  cam.far = Math.max(300, halfExtent * 4);
+  cam.updateProjectionMatrix();
 }
 
-export function applyCameraPreset({ position, target }: CameraPreset): void {
-  camera.position.set(...position);
-  controls.target.set(...target);
-  controls.update();
+/** Keeps the shadow frustum centred on what the camera looks at. */
+export function followWithSun(target: Vector3): void {
+  sun.target.position.copy(target);
+  sun.position.copy(target).add(SUN_OFFSET);
 }
 
 function resize(): void {

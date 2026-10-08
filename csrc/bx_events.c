@@ -3,62 +3,115 @@
 // as floats, exact below 2^24.
 #include "bx.h"
 
+#include <stdlib.h>
 #include <string.h>
 
-static bxFloatBuffer s_move;
-static bxFloatBuffer s_contactBegin;
-static bxFloatBuffer s_contactEnd;
-static bxFloatBuffer s_contactHit;
-static bxFloatBuffer s_sensorBegin;
-static bxFloatBuffer s_sensorEnd;
-static bxFloatBuffer s_jointEvents;
-
-BX_EXPORT float* bx_MoveEventsPtr( void )
+// Every world owns its own set of buffers, so stepping or reading one world never
+// overwrites the records another world's readers still point at.
+typedef struct bxEventBuffers
 {
-	return s_move.data;
+	bxFloatBuffer move;
+	bxFloatBuffer contactBegin;
+	bxFloatBuffer contactEnd;
+	bxFloatBuffer contactHit;
+	bxFloatBuffer sensorBegin;
+	bxFloatBuffer sensorEnd;
+	bxFloatBuffer jointEvents;
+} bxEventBuffers;
+
+static bxEventBuffers** s_buffers;
+static int s_bufferCapacity;
+
+static bxEventBuffers* bxBuffers( int slot )
+{
+	if ( slot < 0 )
+	{
+		slot = 0;
+	}
+	if ( slot >= s_bufferCapacity )
+	{
+		int capacity = s_bufferCapacity == 0 ? 8 : s_bufferCapacity;
+		while ( capacity <= slot )
+		{
+			capacity *= 2;
+		}
+		s_buffers = (bxEventBuffers**)realloc( s_buffers, (size_t)capacity * sizeof( bxEventBuffers* ) );
+		memset( s_buffers + s_bufferCapacity, 0, (size_t)( capacity - s_bufferCapacity ) * sizeof( bxEventBuffers* ) );
+		s_bufferCapacity = capacity;
+	}
+	if ( s_buffers[slot] == NULL )
+	{
+		s_buffers[slot] = (bxEventBuffers*)calloc( 1, sizeof( bxEventBuffers ) );
+	}
+	return s_buffers[slot];
 }
 
-BX_EXPORT float* bx_ContactBeginEventsPtr( void )
+/// Frees a destroyed world's buffers.
+void bxEvents_FreeWorld( int slot )
 {
-	return s_contactBegin.data;
+	if ( slot < 0 || slot >= s_bufferCapacity || s_buffers[slot] == NULL )
+	{
+		return;
+	}
+	bxEventBuffers* eb = s_buffers[slot];
+	free( eb->move.data );
+	free( eb->contactBegin.data );
+	free( eb->contactEnd.data );
+	free( eb->contactHit.data );
+	free( eb->sensorBegin.data );
+	free( eb->sensorEnd.data );
+	free( eb->jointEvents.data );
+	free( eb );
+	s_buffers[slot] = NULL;
 }
 
-BX_EXPORT float* bx_ContactEndEventsPtr( void )
+BX_EXPORT float* bx_MoveEventsPtr( int slot )
 {
-	return s_contactEnd.data;
+	return bxBuffers( slot )->move.data;
 }
 
-BX_EXPORT float* bx_ContactHitEventsPtr( void )
+BX_EXPORT float* bx_ContactBeginEventsPtr( int slot )
 {
-	return s_contactHit.data;
+	return bxBuffers( slot )->contactBegin.data;
 }
 
-BX_EXPORT float* bx_SensorBeginEventsPtr( void )
+BX_EXPORT float* bx_ContactEndEventsPtr( int slot )
 {
-	return s_sensorBegin.data;
+	return bxBuffers( slot )->contactEnd.data;
 }
 
-BX_EXPORT float* bx_SensorEndEventsPtr( void )
+BX_EXPORT float* bx_ContactHitEventsPtr( int slot )
 {
-	return s_sensorEnd.data;
+	return bxBuffers( slot )->contactHit.data;
 }
 
-BX_EXPORT float* bx_JointEventsPtr( void )
+BX_EXPORT float* bx_SensorBeginEventsPtr( int slot )
 {
-	return s_jointEvents.data;
+	return bxBuffers( slot )->sensorBegin.data;
+}
+
+BX_EXPORT float* bx_SensorEndEventsPtr( int slot )
+{
+	return bxBuffers( slot )->sensorEnd.data;
+}
+
+BX_EXPORT float* bx_JointEventsPtr( int slot )
+{
+	return bxBuffers( slot )->jointEvents.data;
 }
 
 /// record: [body, px, py, pz, qx, qy, qz, qw, fellAsleep]
 BX_EXPORT int bx_World_GetMoveEvents( int slot )
 {
+	bxEventBuffers* eb = bxBuffers( slot );
 	b3WorldId worldId = bxWorldId( slot );
-	s_move.count = 0;
+	eb->move.count = 0;
 	if ( B3_IS_NULL( worldId ) )
 	{
 		return 0;
 	}
 	b3BodyEvents events = b3World_GetBodyEvents( worldId );
-	float* out = bxFloatBuffer_Reserve( &s_move, events.moveCount * BX_STRIDE_MOVE );
+	float* out = bxFloatBuffer_Reserve( &eb->move, events.moveCount * BX_STRIDE_MOVE );
 	int count = 0;
 	for ( int i = 0; i < events.moveCount; ++i )
 	{
@@ -80,7 +133,7 @@ BX_EXPORT int bx_World_GetMoveEvents( int slot )
 		out += BX_STRIDE_MOVE;
 		count += 1;
 	}
-	s_move.count = count;
+	eb->move.count = count;
 	return count;
 }
 
@@ -127,14 +180,15 @@ static void bxWriteBeginTouchData( float* out, b3ContactId contactId, b3ShapeId 
 /// record: [shapeA, shapeB, bodyA, bodyB, px, py, pz, nx, ny, nz, totalNormalImpulse, pointCount, manifoldCount]
 BX_EXPORT int bx_World_GetContactBeginEvents( int slot )
 {
+	bxEventBuffers* eb = bxBuffers( slot );
 	b3WorldId worldId = bxWorldId( slot );
-	s_contactBegin.count = 0;
+	eb->contactBegin.count = 0;
 	if ( B3_IS_NULL( worldId ) )
 	{
 		return 0;
 	}
 	b3ContactEvents events = b3World_GetContactEvents( worldId );
-	float* out = bxFloatBuffer_Reserve( &s_contactBegin, events.beginCount * BX_STRIDE_CONTACT_BEGIN );
+	float* out = bxFloatBuffer_Reserve( &eb->contactBegin, events.beginCount * BX_STRIDE_CONTACT_BEGIN );
 	int count = 0;
 	for ( int i = 0; i < events.beginCount; ++i )
 	{
@@ -147,21 +201,22 @@ BX_EXPORT int bx_World_GetContactBeginEvents( int slot )
 		out += BX_STRIDE_CONTACT_BEGIN;
 		count += 1;
 	}
-	s_contactBegin.count = count;
+	eb->contactBegin.count = count;
 	return count;
 }
 
 /// record: [shapeA, shapeB, bodyA, bodyB], 0 for a shape that no longer exists
 BX_EXPORT int bx_World_GetContactEndEvents( int slot )
 {
+	bxEventBuffers* eb = bxBuffers( slot );
 	b3WorldId worldId = bxWorldId( slot );
-	s_contactEnd.count = 0;
+	eb->contactEnd.count = 0;
 	if ( B3_IS_NULL( worldId ) )
 	{
 		return 0;
 	}
 	b3ContactEvents events = b3World_GetContactEvents( worldId );
-	float* out = bxFloatBuffer_Reserve( &s_contactEnd, events.endCount * BX_STRIDE_CONTACT_END );
+	float* out = bxFloatBuffer_Reserve( &eb->contactEnd, events.endCount * BX_STRIDE_CONTACT_END );
 	for ( int i = 0; i < events.endCount; ++i )
 	{
 		const b3ContactEndTouchEvent* e = events.endEvents + i;
@@ -171,21 +226,22 @@ BX_EXPORT int bx_World_GetContactEndEvents( int slot )
 		out[3] = (float)bxBodySlotOfShape( e->shapeIdB );
 		out += BX_STRIDE_CONTACT_END;
 	}
-	s_contactEnd.count = events.endCount;
+	eb->contactEnd.count = events.endCount;
 	return events.endCount;
 }
 
 /// record: [shapeA, shapeB, bodyA, bodyB, px, py, pz, nx, ny, nz, approachSpeed]
 BX_EXPORT int bx_World_GetContactHitEvents( int slot )
 {
+	bxEventBuffers* eb = bxBuffers( slot );
 	b3WorldId worldId = bxWorldId( slot );
-	s_contactHit.count = 0;
+	eb->contactHit.count = 0;
 	if ( B3_IS_NULL( worldId ) )
 	{
 		return 0;
 	}
 	b3ContactEvents events = b3World_GetContactEvents( worldId );
-	float* out = bxFloatBuffer_Reserve( &s_contactHit, events.hitCount * BX_STRIDE_CONTACT_HIT );
+	float* out = bxFloatBuffer_Reserve( &eb->contactHit, events.hitCount * BX_STRIDE_CONTACT_HIT );
 	for ( int i = 0; i < events.hitCount; ++i )
 	{
 		const b3ContactHitEvent* e = events.hitEvents + i;
@@ -202,21 +258,22 @@ BX_EXPORT int bx_World_GetContactHitEvents( int slot )
 		out[10] = e->approachSpeed;
 		out += BX_STRIDE_CONTACT_HIT;
 	}
-	s_contactHit.count = events.hitCount;
+	eb->contactHit.count = events.hitCount;
 	return events.hitCount;
 }
 
 /// record: [sensorShape, visitorShape, sensorBody, visitorBody]
 BX_EXPORT int bx_World_GetSensorBeginEvents( int slot )
 {
+	bxEventBuffers* eb = bxBuffers( slot );
 	b3WorldId worldId = bxWorldId( slot );
-	s_sensorBegin.count = 0;
+	eb->sensorBegin.count = 0;
 	if ( B3_IS_NULL( worldId ) )
 	{
 		return 0;
 	}
 	b3SensorEvents events = b3World_GetSensorEvents( worldId );
-	float* out = bxFloatBuffer_Reserve( &s_sensorBegin, events.beginCount * BX_STRIDE_SENSOR );
+	float* out = bxFloatBuffer_Reserve( &eb->sensorBegin, events.beginCount * BX_STRIDE_SENSOR );
 	for ( int i = 0; i < events.beginCount; ++i )
 	{
 		const b3SensorBeginTouchEvent* e = events.beginEvents + i;
@@ -226,21 +283,22 @@ BX_EXPORT int bx_World_GetSensorBeginEvents( int slot )
 		out[3] = (float)bxBodySlotOfShape( e->visitorShapeId );
 		out += BX_STRIDE_SENSOR;
 	}
-	s_sensorBegin.count = events.beginCount;
+	eb->sensorBegin.count = events.beginCount;
 	return events.beginCount;
 }
 
 /// record: [sensorShape, visitorShape, sensorBody, visitorBody], 0 for a shape that no longer exists
 BX_EXPORT int bx_World_GetSensorEndEvents( int slot )
 {
+	bxEventBuffers* eb = bxBuffers( slot );
 	b3WorldId worldId = bxWorldId( slot );
-	s_sensorEnd.count = 0;
+	eb->sensorEnd.count = 0;
 	if ( B3_IS_NULL( worldId ) )
 	{
 		return 0;
 	}
 	b3SensorEvents events = b3World_GetSensorEvents( worldId );
-	float* out = bxFloatBuffer_Reserve( &s_sensorEnd, events.endCount * BX_STRIDE_SENSOR );
+	float* out = bxFloatBuffer_Reserve( &eb->sensorEnd, events.endCount * BX_STRIDE_SENSOR );
 	for ( int i = 0; i < events.endCount; ++i )
 	{
 		const b3SensorEndTouchEvent* e = events.endEvents + i;
@@ -250,25 +308,26 @@ BX_EXPORT int bx_World_GetSensorEndEvents( int slot )
 		out[3] = (float)bxBodySlotOfShape( e->visitorShapeId );
 		out += BX_STRIDE_SENSOR;
 	}
-	s_sensorEnd.count = events.endCount;
+	eb->sensorEnd.count = events.endCount;
 	return events.endCount;
 }
 
 /// record: [joint]
 BX_EXPORT int bx_World_GetJointEvents( int slot )
 {
+	bxEventBuffers* eb = bxBuffers( slot );
 	b3WorldId worldId = bxWorldId( slot );
-	s_jointEvents.count = 0;
+	eb->jointEvents.count = 0;
 	if ( B3_IS_NULL( worldId ) )
 	{
 		return 0;
 	}
 	b3JointEvents events = b3World_GetJointEvents( worldId );
-	float* out = bxFloatBuffer_Reserve( &s_jointEvents, events.count * BX_STRIDE_JOINT_EVENT );
+	float* out = bxFloatBuffer_Reserve( &eb->jointEvents, events.count * BX_STRIDE_JOINT_EVENT );
 	for ( int i = 0; i < events.count; ++i )
 	{
 		out[i] = (float)(int)(intptr_t)events.jointEvents[i].userData;
 	}
-	s_jointEvents.count = events.count;
+	eb->jointEvents.count = events.count;
 	return events.count;
 }

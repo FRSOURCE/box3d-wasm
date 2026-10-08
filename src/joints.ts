@@ -82,6 +82,11 @@ export class Joint extends Handle {
     return this.alive && this.rt.m._bx_Joint_IsValid(this.slot) !== 0;
   }
 
+  /** False when the joint's island is asleep. */
+  isAwake(): boolean {
+    return this.rt.m._bx_Joint_IsAwake(this.slot) !== 0;
+  }
+
   /** Removes the joint from the simulation. */
   destroy(wakeAttached = true): void {
     if (!this.alive) return;
@@ -272,6 +277,11 @@ export class DistanceJoint extends Joint {
   }
   setSpringForceRange(lower: number, upper: number): void {
     this.setFF(this.rt.m._bx_DistanceJoint_SetSpringForceRange, lower, upper);
+  }
+  getSpringForceRange(): { lower: number; upper: number } {
+    this.assertAlive('joint');
+    this.rt.m._bx_DistanceJoint_GetSpringForceRange(this.slot);
+    return { lower: this.rt.scratchF(0), upper: this.rt.scratchF(1) };
   }
   setSpringHertz(v: number): void {
     this.setF(this.rt.m._bx_DistanceJoint_SetSpringHertz, v);
