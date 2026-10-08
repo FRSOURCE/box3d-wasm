@@ -124,7 +124,19 @@ export interface BodyOptions {
   name?: string;
 }
 
+/** Per-surface material, for example one per mesh triangle group. */
+export interface SurfaceMaterial {
+  friction?: number;
+  restitution?: number;
+  rollingResistance?: number;
+  tangentVelocity?: Vec3;
+  userMaterialId?: Bits;
+  customColor?: number;
+}
+
 export interface ShapeOptions {
+  /** Materials that mesh triangle `materialIndices` index into (up to 255). */
+  materials?: SurfaceMaterial[];
   density?: number;
   friction?: number;
   restitution?: number;
@@ -346,6 +358,12 @@ export interface Counters {
   awakeContactCount: number;
   recycledContactCount: number;
   byteCount: number;
+  satCallCount: number;
+  satCacheHitCount: number;
+  /** Constraints per graph color. */
+  colorCounts: number[];
+  /** Contacts bucketed by manifold count. */
+  manifoldCounts: number[];
 }
 
 export function vec3(x = 0, y = 0, z = 0): Vec3 {
@@ -362,4 +380,49 @@ export function transform(): Transform {
 
 export function mat3(): Mat3 {
   return { cx: vec3(), cy: vec3(), cz: vec3() };
+}
+
+export interface WorldCapacity {
+  staticShapes: number;
+  dynamicShapes: number;
+  staticBodies: number;
+  dynamicBodies: number;
+  contacts: number;
+}
+
+/** Result of casting a ray or shape at one body. Allocates; the world-level casts reuse a result object instead. */
+export interface BodyCastResult {
+  hit: boolean;
+  shape: import('./shape.js').Shape | undefined;
+  point: Vec3;
+  normal: Vec3;
+  fraction: number;
+  triangleIndex: number;
+  userMaterialId: Bits;
+}
+
+/** Callbacks that run inside the step; see World.setCallbacks. */
+export interface WorldCallbacks {
+  friction?: (
+    frictionA: number,
+    materialIdA: Bits,
+    frictionB: number,
+    materialIdB: Bits,
+  ) => number | undefined;
+  restitution?: (
+    restitutionA: number,
+    materialIdA: Bits,
+    restitutionB: number,
+    materialIdB: Bits,
+  ) => number | undefined;
+  preSolve?: (
+    shapeA: import('./shape.js').Shape,
+    shapeB: import('./shape.js').Shape,
+    point: Vec3,
+    normal: Vec3,
+  ) => boolean;
+  customFilter?: (
+    shapeA: import('./shape.js').Shape,
+    shapeB: import('./shape.js').Shape,
+  ) => boolean;
 }

@@ -55,7 +55,7 @@ for FLAVOUR in $FLAVOURS; do
   fi
 
   echo "==> cmake ($FLAVOUR, $CMAKE_TYPE)"
-  CFLAGS="${FLAVOUR_FLAGS[*]:-}" emcmake cmake \
+  CFLAGS="${FLAVOUR_FLAGS[*]:-} ${LTO_FLAGS:-}" emcmake cmake \
     -S "$BOX3D_SRC" \
     -B "$CMAKE_BUILD_DIR" \
     -DCMAKE_BUILD_TYPE="$CMAKE_TYPE" \
@@ -112,7 +112,7 @@ for FLAVOUR in $FLAVOURS; do
       EMCC_OPTS+=(-O1 -g3 -gsource-map -sASSERTIONS=2 -sSTACK_OVERFLOW_CHECK=2 -sSAFE_HEAP=1 -DBX_CHECK_HANDLES)
       ;;
     *)
-      EMCC_OPTS+=(-O3 -DNDEBUG -sASSERTIONS=0)
+      EMCC_OPTS+=(-O3 -DNDEBUG -sASSERTIONS=0 ${LTO_FLAGS:-})
       ;;
   esac
 

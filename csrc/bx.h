@@ -29,6 +29,7 @@ typedef struct bxTable
 	int capacity;
 	int* freeList;
 	int freeCount;
+	char* used; // 1 while a slot is allocated, guards double frees
 } bxTable;
 
 int bxTable_Alloc( bxTable* table );
@@ -39,6 +40,8 @@ typedef struct bxWorld
 {
 	b3WorldId id;
 	int alive;
+	int callbackMask; // bxCallbackBits registered for this world
+	int savedWorkers; // worker count to restore when the callbacks go away
 } bxWorld;
 
 typedef struct bxBody
@@ -53,7 +56,27 @@ typedef struct bxShape
 	b3ShapeId id;
 	int body;
 	int alive;
+	int resource; // slot in bx_resources the shape references, 0 for none
 } bxShape;
+
+// Mesh and height field data the engine references but does not own. It is
+// freed once it has been released from JS and no live shape points at it.
+enum bxResourceKind
+{
+	BX_RESOURCE_MESH = 1,
+	BX_RESOURCE_HEIGHT_FIELD = 2,
+	BX_RESOURCE_HULL = 3,
+	BX_RESOURCE_COMPOUND = 4,
+};
+
+typedef struct bxResource
+{
+	void* ptr;
+	int kind;
+	int refs;
+	int alive;
+	int released;
+} bxResource;
 
 typedef struct bxJoint
 {
@@ -67,12 +90,28 @@ extern bxTable bx_worlds;
 extern bxTable bx_bodies;
 extern bxTable bx_shapes;
 extern bxTable bx_joints;
+extern bxTable bx_resources;
+
+/// Frees a shape slot and drops its reference on any mesh or height field.
+void bxShapeSlotFree( int slot );
 
 b3WorldId bxWorldId( int slot );
 b3BodyId bxBodyId( int slot );
 b3ShapeId bxShapeId( int slot );
 b3JointId bxJointId( int slot );
 bxJoint* bxJointAt( int slot );
+
+// JS callbacks run on the stepping thread, so a step with callbacks runs its tasks inline.
+void bxThreads_SetInline( int on );
+void bxCallbacks_SetCurrentWorld( int slot );
+
+/// Normalizes only when needed: a quaternion that is already unit to tolerance passes through bit for bit,
+/// as in the C API (renormalizing would change its low bits and break exact agreement with native Box3D).
+static inline b3Quat bxUnitQuat( float x, float y, float z, float w )
+{
+	b3Quat q = { { x, y, z }, w };
+	return b3IsNormalizedQuat( q ) ? q : b3NormalizeQuat( q );
+}
 
 int bxBodySlotOf( b3BodyId id );
 int bxShapeSlotOf( b3ShapeId id );
@@ -336,6 +375,9 @@ typedef struct bxFloatBuffer
 } bxFloatBuffer;
 
 float* bxFloatBuffer_Reserve( bxFloatBuffer* buffer, int floats );
+
+/// Frees a destroyed world's event buffers.
+void bxEvents_FreeWorld( int slot );
 
 // Record strides. Mirrored in src/runtime/layouts.ts.
 enum bxStrides

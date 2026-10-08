@@ -119,10 +119,23 @@ static int bxEnsureWorkers( int threads )
 	return s_workerThreads < threads ? s_workerThreads : threads;
 }
 
+static atomic_int s_inline;
+
+void bxThreads_SetInline( int on )
+{
+	atomic_store( &s_inline, on );
+}
+
 static void* bxEnqueueTask( b3TaskCallback* task, void* taskContext, void* userContext, const char* name )
 {
 	(void)userContext;
 	(void)name;
+	if ( atomic_load( &s_inline ) != 0 )
+	{
+		// a JS callback may fire inside this task: keep it on the stepping thread
+		task( taskContext );
+		return NULL;
+	}
 	int slot = atomic_fetch_add( &s_taskCount, 1 );
 	if ( slot >= BX_TASK_CAPACITY )
 	{
@@ -207,6 +220,11 @@ BX_EXPORT void bx_SetWorkerPool( int workers )
 }
 
 #else
+
+void bxThreads_SetInline( int on )
+{
+	(void)on;
+}
 
 void bxThreads_FillWorldDef( b3WorldDef* def, int workerCount )
 {

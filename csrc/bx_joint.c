@@ -25,7 +25,7 @@ static b3Vec3 bxVec3( float x, float y, float z )
 static b3Quat bxQuat( float x, float y, float z, float w )
 {
 	b3Quat q = { { x, y, z }, w };
-	return b3NormalizeQuat( q );
+	return b3IsNormalizedQuat( q ) ? q : b3NormalizeQuat( q );
 }
 
 // ---------------------------------------------------------------------------

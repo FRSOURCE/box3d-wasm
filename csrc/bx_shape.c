@@ -48,9 +48,45 @@ BX_EXPORT void bx_ShapeDef_Default( void )
 	bx_def[BX_SD_CUSTOM_COLOR].u = def.baseMaterial.customColor;
 }
 
+// Per-triangle materials staged by bx_Def_StageMaterials, consumed by the next shape creation.
+#define BX_MAX_STAGED_MATERIALS 255
+static b3SurfaceMaterial s_stagedMaterials[BX_MAX_STAGED_MATERIALS];
+static int s_stagedMaterialCount;
+
+/// data: 9 floats per material [friction, restitution, rollingResistance, tx, ty, tz, userMaterialLo, userMaterialHi, color].
+/// The next shape creation takes them; mesh triangles index into them.
+BX_EXPORT int bx_Def_StageMaterials( const float* data, int count )
+{
+	if ( count < 0 || count > BX_MAX_STAGED_MATERIALS )
+	{
+		return 0;
+	}
+	for ( int i = 0; i < count; ++i )
+	{
+		const float* m = data + 9 * i;
+		const uint32_t* u = (const uint32_t*)m;
+		b3SurfaceMaterial material = b3DefaultSurfaceMaterial();
+		material.friction = m[0];
+		material.restitution = m[1];
+		material.rollingResistance = m[2];
+		material.tangentVelocity = bxVec3( m[3], m[4], m[5] );
+		material.userMaterialId = (uint64_t)u[6] | ( (uint64_t)u[7] << 32 );
+		material.customColor = u[8];
+		s_stagedMaterials[i] = material;
+	}
+	s_stagedMaterialCount = count;
+	return 1;
+}
+
 static b3ShapeDef bxReadShapeDef( int slot )
 {
 	b3ShapeDef def = b3DefaultShapeDef();
+	if ( s_stagedMaterialCount > 0 )
+	{
+		def.materials = s_stagedMaterials;
+		def.materialCount = s_stagedMaterialCount;
+		s_stagedMaterialCount = 0;
+	}
 	def.userData = (void*)(intptr_t)slot;
 	def.density = bx_def[BX_SD_DENSITY].f;
 	def.baseMaterial.friction = bx_def[BX_SD_FRICTION].f;
@@ -73,6 +109,11 @@ static b3ShapeDef bxReadShapeDef( int slot )
 	def.enableCustomFiltering = bxDefFlag( BX_SD_FLAGS, BX_SD_ENABLE_CUSTOM_FILTERING );
 	def.enableSpeculativeContact = bxDefFlag( BX_SD_FLAGS, BX_SD_ENABLE_SPECULATIVE_CONTACT );
 	return def;
+}
+
+b3ShapeDef bxReadShapeDefPublic( int slot )
+{
+	return bxReadShapeDef( slot );
 }
 
 // Every creator: allocate the slot first so the shape's userData is its slot,
@@ -128,7 +169,7 @@ BX_EXPORT int bx_CreateBoxShape( int body, float hx, float hy, float hz, float p
 	}
 	int slot = bxTable_Alloc( &bx_shapes );
 	b3ShapeDef def = bxReadShapeDef( slot );
-	b3Transform xf = { bxVec3( px, py, pz ), b3NormalizeQuat( ( b3Quat ){ { qx, qy, qz }, qw } ) };
+	b3Transform xf = { bxVec3( px, py, pz ), bxUnitQuat( qx, qy, qz, qw ) };
 	int identity = px == 0.0f && py == 0.0f && pz == 0.0f && qx == 0.0f && qy == 0.0f && qz == 0.0f && qw == 1.0f;
 	b3BoxHull box = identity ? b3MakeBoxHull( hx, hy, hz ) : b3MakeTransformedBoxHull( hx, hy, hz, xf );
 	return bxFinishShape( slot, body, b3CreateHullShape( bodyId, &def, &box.base ) );
@@ -166,7 +207,7 @@ BX_EXPORT void bx_DestroyShape( int slot, int updateBodyMass )
 	{
 		b3DestroyShape( shape->id, updateBodyMass != 0 );
 	}
-	bxTable_Free( &bx_shapes, slot );
+	bxShapeSlotFree( slot );
 }
 
 BX_EXPORT int bx_Shape_IsValid( int slot )

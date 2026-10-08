@@ -90,7 +90,7 @@ BX_EXPORT void bx_DestroyWorld( int slot )
 		bxBody* body = shape->alive ? bxTable_Get( &bx_bodies, shape->body ) : NULL;
 		if ( body != NULL && body->world == slot )
 		{
-			bxTable_Free( &bx_shapes, i );
+			bxShapeSlotFree( i );
 		}
 	}
 	for ( int i = 1; i < bx_joints.count; ++i )
@@ -109,6 +109,7 @@ BX_EXPORT void bx_DestroyWorld( int slot )
 			bxTable_Free( &bx_bodies, i );
 		}
 	}
+	bxEvents_FreeWorld( slot );
 	bxTable_Free( &bx_worlds, slot );
 }
 
@@ -122,6 +123,15 @@ BX_EXPORT void bx_World_Step( int slot, float timeStep, int subStepCount )
 {
 	BX_WORLD( slot );
 	bxThreads_BeginStep();
+	bxWorld* world = bxTable_Get( &bx_worlds, slot );
+	if ( world->callbackMask != 0 )
+	{
+		bxCallbacks_SetCurrentWorld( slot );
+		bxThreads_SetInline( 1 );
+		b3World_Step( worldId, timeStep, subStepCount );
+		bxThreads_SetInline( 0 );
+		return;
+	}
 	b3World_Step( worldId, timeStep, subStepCount );
 }
 
@@ -231,6 +241,14 @@ BX_EXPORT void bx_World_Explode( int slot, float px, float py, float pz, float r
 	b3World_Explode( worldId, &def );
 }
 
+#define BX_COUNTER_COLORS 24
+
+// the frontend reads these structs through the scratch buffer by position
+_Static_assert( sizeof( b3Profile ) % sizeof( float ) == 0, "b3Profile must be only floats" );
+_Static_assert( sizeof( b3Profile ) / sizeof( float ) <= BX_SCRATCH_WORDS, "b3Profile outgrew the scratch buffer" );
+_Static_assert( sizeof( ( (b3Counters*)0 )->colorCounts ) / sizeof( int ) == BX_COUNTER_COLORS, "counter color count changed" );
+_Static_assert( 16 + BX_COUNTER_COLORS + B3_CONTACT_MANIFOLD_COUNT_BUCKETS <= BX_SCRATCH_WORDS, "b3Counters outgrew scratch" );
+
 /// scratch: the 23 b3Profile fields in declaration order, milliseconds
 BX_EXPORT int bx_World_GetProfile( int slot )
 {
@@ -246,7 +264,8 @@ BX_EXPORT int bx_World_GetProfile( int slot )
 }
 
 /// scratch (i32): [bodyCount, shapeCount, contactCount, jointCount, islandCount, stackUsed, arenaCapacity,
-/// staticTreeHeight, treeHeight, taskCount, awakeContactCount, recycledContactCount, byteCountLo, byteCountHi]
+/// staticTreeHeight, treeHeight, taskCount, awakeContactCount, recycledContactCount, byteCountLo, byteCountHi,
+/// satCallCount, satCacheHitCount, colorCounts x24, manifoldCounts x8]
 BX_EXPORT int bx_World_GetCounters( int slot )
 {
 	BX_WORLD_RET( slot, 0 );
@@ -265,5 +284,15 @@ BX_EXPORT int bx_World_GetCounters( int slot )
 	bx_scratch[11].i = c.recycledContactCount;
 	bx_scratch[12].u = (uint32_t)( (uint64_t)c.byteCount & 0xffffffffu );
 	bx_scratch[13].u = (uint32_t)( (uint64_t)c.byteCount >> 32 );
-	return 14;
+	bx_scratch[14].i = c.satCallCount;
+	bx_scratch[15].i = c.satCacheHitCount;
+	for ( int i = 0; i < BX_COUNTER_COLORS; ++i )
+	{
+		bx_scratch[16 + i].i = c.colorCounts[i];
+	}
+	for ( int i = 0; i < B3_CONTACT_MANIFOLD_COUNT_BUCKETS; ++i )
+	{
+		bx_scratch[16 + BX_COUNTER_COLORS + i].i = c.manifoldCounts[i];
+	}
+	return 16 + BX_COUNTER_COLORS + B3_CONTACT_MANIFOLD_COUNT_BUCKETS;
 }

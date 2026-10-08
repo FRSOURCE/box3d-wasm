@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { Body, Box3D, World } from '../dist/index.js';
 import {
+  box,
   flavour,
   ground,
   loadBox3D,
@@ -218,5 +219,28 @@ describe(`events (${flavour})`, () => {
       }
     `);
     world.destroy();
+  });
+});
+
+describe(`events across worlds (${flavour})`, () => {
+  it('keeps each world’s event records apart', () => {
+    const a = new b3.World({ gravity: { x: 0, y: 0, z: 0 } });
+    const b = new b3.World({ gravity: { x: 0, y: 0, z: 0 } });
+    const bodyA = box(a, 1, 2, 3);
+    const bodyB = box(b, -7, -8, -9);
+    bodyA.setLinearVelocity({ x: 1, y: 0, z: 0 });
+    bodyB.setLinearVelocity({ x: 1, y: 0, z: 0 });
+    a.step(1 / 60, 4);
+    b.step(1 / 60, 4);
+    const movesA = a.getMoveEvents();
+    const movesB = b.getMoveEvents();
+    expect(movesA.count).toBe(1);
+    expect(movesB.count).toBe(1);
+    expect(movesA.bodyAt(0)).toBe(bodyA);
+    expect(movesB.bodyAt(0)).toBe(bodyB);
+    expect(movesA.copyPositionTo(0, { x: 0, y: 0, z: 0 }).x).toBeCloseTo(1, 1);
+    expect(movesB.copyPositionTo(0, { x: 0, y: 0, z: 0 }).x).toBeCloseTo(-7, 1);
+    a.destroy();
+    b.destroy();
   });
 });

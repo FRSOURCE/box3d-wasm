@@ -1,18 +1,39 @@
+import type {
+  Compound,
+  HeightField,
+  Hull,
+  HullShapeOptions,
+  Mesh,
+  MeshShapeOptions,
+} from './geometry.js';
 import { Handle } from './handle.js';
+import {
+  type Mover,
+  PlaneList,
+  type TimeOfImpactResult,
+  uploadMover,
+} from './mover.js';
+import { ContactList } from './queries.js';
 import type { Joint } from './joints.js';
+import { ALL_BITS_WORD, hi32, join64, lo32 } from './runtime/bits.js';
+import type { ShapeProxy } from './proxy.js';
 import { BodyDef, BodyFlag } from './runtime/layouts.js';
 import type { Runtime } from './runtime/module.js';
 import { readMassData, Shape, stageShapeDef } from './shape.js';
 import {
   type AABB,
+  type BodyCastResult,
   type BodyOptions,
   type BodyType,
   type BoxOptions,
   type CapsuleOptions,
   type HullOptions,
+  type ShapeOptions,
+  type Mat3,
   type MassData,
   mat3,
   type MotionLocks,
+  type QueryFilter,
   type Quat,
   quat,
   type SphereOptions,
@@ -133,12 +154,325 @@ export class Body extends Handle {
 
   getType(): BodyType {
     this.assertAlive('body');
-    return BODY_TYPES[this.rt.m._bx_Body_GetType(this.slot)] ?? 'static';
+    const type = BODY_TYPES[this.rt.m._bx_Body_GetType(this.slot)];
+    if (type === undefined) throw new Error('Box3D: body has an unknown type');
+    return type;
   }
 
   setType(type: BodyType): void {
     this.assertAlive('body');
     this.rt.m._bx_Body_SetType(this.slot, bodyTypeCode(type));
+  }
+
+  /**
+   * Touching manifolds of this body, one record per manifold. The list is
+   * shared and overwritten by the next getContacts call on any body or shape.
+   */
+  getContacts(): ContactList {
+    this.assertAlive('body');
+    const rt = this.rt;
+    rt.contacts ??= new ContactList(rt);
+    return rt.contacts.load(rt.m._bx_Body_GetContacts(this.slot));
+  }
+
+  /** Collision planes between a mover and this body's convex shapes, at the body's current transform. */
+  collideMover(
+    origin: Vec3,
+    mover: Mover,
+    filter: QueryFilter = {},
+  ): PlaneList {
+    this.assertAlive('body');
+    const rt = this.rt;
+    const category = filter.categoryBits;
+    const mask = filter.maskBits;
+    rt.planes ??= new PlaneList(rt);
+    return rt.planes.load(
+      rt.m._bx_Body_CollideMover(
+        this.slot,
+        origin.x,
+        origin.y,
+        origin.z,
+        uploadMover(rt, mover),
+        category === undefined ? ALL_BITS_WORD : lo32(category),
+        category === undefined ? ALL_BITS_WORD : hi32(category),
+        mask === undefined ? ALL_BITS_WORD : lo32(mask),
+        mask === undefined ? ALL_BITS_WORD : hi32(mask),
+      ),
+    );
+  }
+
+  /** Sweeps a mover against this body (held still); initial overlap is ignored. */
+  timeOfImpactMover(
+    origin: Vec3,
+    mover: Mover,
+    translation: Vec3,
+    filter: QueryFilter = {},
+  ): TimeOfImpactResult {
+    this.assertAlive('body');
+    const rt = this.rt;
+    const category = filter.categoryBits;
+    const mask = filter.maskBits;
+    const shape = rt.m._bx_Body_TimeOfImpactMover(
+      this.slot,
+      origin.x,
+      origin.y,
+      origin.z,
+      uploadMover(rt, mover),
+      translation.x,
+      translation.y,
+      translation.z,
+      category === undefined ? ALL_BITS_WORD : lo32(category),
+      category === undefined ? ALL_BITS_WORD : hi32(category),
+      mask === undefined ? ALL_BITS_WORD : lo32(mask),
+      mask === undefined ? ALL_BITS_WORD : hi32(mask),
+    );
+    if (shape === 0) {
+      return {
+        hit: false,
+        point: vec3(),
+        normal: vec3(),
+        fraction: 1,
+        shape: undefined,
+      };
+    }
+    return {
+      hit: true,
+      point: rt.scratchVec3(vec3(), 0),
+      normal: rt.scratchVec3(vec3(), 3),
+      fraction: rt.scratchF(6),
+      shape: rt.shapes[shape],
+    };
+  }
+
+  /** Casts a ray at this body (at its current transform). Returns the nearest hit, or `hit: false`. */
+  castRay(
+    origin: Vec3,
+    translation: Vec3,
+    filter: QueryFilter = {},
+    maxFraction = 1,
+  ): BodyCastResult {
+    this.assertAlive('body');
+    const rt = this.rt;
+    const category = filter.categoryBits;
+    const mask = filter.maskBits;
+    const shape = rt.m._bx_Body_CastRay(
+      this.slot,
+      origin.x,
+      origin.y,
+      origin.z,
+      translation.x,
+      translation.y,
+      translation.z,
+      maxFraction,
+      category === undefined ? ALL_BITS_WORD : lo32(category),
+      category === undefined ? ALL_BITS_WORD : hi32(category),
+      mask === undefined ? ALL_BITS_WORD : lo32(mask),
+      mask === undefined ? ALL_BITS_WORD : hi32(mask),
+    );
+    return this.readCast(shape);
+  }
+
+  /** Sweeps a shape proxy at this body. */
+  castShape(
+    proxy: ShapeProxy,
+    origin: Vec3,
+    translation: Vec3,
+    filter: QueryFilter = {},
+    maxFraction = 1,
+    canEncroach = false,
+  ): BodyCastResult {
+    this.assertAlive('body');
+    const rt = this.rt;
+    const category = filter.categoryBits;
+    const mask = filter.maskBits;
+    const n = proxy.points.length / 3;
+    if (!Number.isInteger(n) || n < 1 || n > 128) {
+      throw new RangeError(
+        'box3d: a shape proxy needs 1 to 128 points (flat xyz array)',
+      );
+    }
+    const ptr = rt.arena.uploadF32(proxy.points);
+    const shape = rt.m._bx_Body_CastShape(
+      this.slot,
+      ptr,
+      n,
+      proxy.radius ?? 0,
+      origin.x,
+      origin.y,
+      origin.z,
+      translation.x,
+      translation.y,
+      translation.z,
+      maxFraction,
+      canEncroach ? 1 : 0,
+      category === undefined ? ALL_BITS_WORD : lo32(category),
+      category === undefined ? ALL_BITS_WORD : hi32(category),
+      mask === undefined ? ALL_BITS_WORD : lo32(mask),
+      mask === undefined ? ALL_BITS_WORD : hi32(mask),
+    );
+    return this.readCast(shape);
+  }
+
+  /** True when the proxy placed at `origin` overlaps this body. */
+  overlapShape(
+    proxy: ShapeProxy,
+    origin: Vec3,
+    filter: QueryFilter = {},
+  ): boolean {
+    this.assertAlive('body');
+    const rt = this.rt;
+    const category = filter.categoryBits;
+    const mask = filter.maskBits;
+    const n = proxy.points.length / 3;
+    if (!Number.isInteger(n) || n < 1 || n > 128) {
+      throw new RangeError(
+        'box3d: a shape proxy needs 1 to 128 points (flat xyz array)',
+      );
+    }
+    const ptr = rt.arena.uploadF32(proxy.points);
+    return (
+      rt.m._bx_Body_OverlapShape(
+        this.slot,
+        ptr,
+        n,
+        proxy.radius ?? 0,
+        origin.x,
+        origin.y,
+        origin.z,
+        category === undefined ? ALL_BITS_WORD : lo32(category),
+        category === undefined ? ALL_BITS_WORD : hi32(category),
+        mask === undefined ? ALL_BITS_WORD : lo32(mask),
+        mask === undefined ? ALL_BITS_WORD : hi32(mask),
+      ) !== 0
+    );
+  }
+
+  private readCast(shapeSlot: number): BodyCastResult {
+    const rt = this.rt;
+    if (shapeSlot === 0) {
+      return {
+        hit: false,
+        shape: undefined,
+        point: vec3(),
+        normal: vec3(),
+        fraction: 1,
+        triangleIndex: -1,
+        userMaterialId: 0,
+      };
+    }
+    return {
+      hit: true,
+      shape: rt.shapes[shapeSlot],
+      point: rt.scratchVec3(vec3(), 0),
+      normal: rt.scratchVec3(vec3(), 3),
+      fraction: rt.scratchF(6),
+      triangleIndex: rt.scratchI(7),
+      userMaterialId: join64(rt.scratchU(8), rt.scratchU(9)),
+    };
+  }
+
+  getInverseMass(): number {
+    this.assertAlive('body');
+    return this.rt.m._bx_Body_GetInverseMass(this.slot);
+  }
+
+  getLocalRotationalInertia(out: Mat3 = mat3()): Mat3 {
+    this.assertAlive('body');
+    this.rt.m._bx_Body_GetLocalRotationalInertia(this.slot);
+    return this.readMat3(out);
+  }
+
+  getWorldInverseRotationalInertia(out: Mat3 = mat3()): Mat3 {
+    this.assertAlive('body');
+    this.rt.m._bx_Body_GetWorldInverseRotationalInertia(this.slot);
+    return this.readMat3(out);
+  }
+
+  getMaxExtent(out: Vec3 = vec3()): Vec3 {
+    this.assertAlive('body');
+    this.rt.m._bx_Body_GetMaxExtent(this.slot);
+    return this.rt.scratchVec3(out);
+  }
+
+  getMinExtent(): number {
+    this.assertAlive('body');
+    return this.rt.m._bx_Body_GetMinExtent(this.slot);
+  }
+
+  getMaxExtentOrigin(out: Vec3 = vec3()): Vec3 {
+    this.assertAlive('body');
+    this.rt.m._bx_Body_GetMaxExtentOrigin(this.slot);
+    return this.rt.scratchVec3(out);
+  }
+
+  /** Velocity of the body at a world point. */
+  getWorldPointVelocity(point: Vec3, out: Vec3 = vec3()): Vec3 {
+    this.assertAlive('body');
+    this.rt.m._bx_Body_GetWorldPointVelocity(
+      this.slot,
+      point.x,
+      point.y,
+      point.z,
+    );
+    return this.rt.scratchVec3(out);
+  }
+
+  /** Velocity of the body at a point in its local frame. */
+  getLocalPointVelocity(point: Vec3, out: Vec3 = vec3()): Vec3 {
+    this.assertAlive('body');
+    this.rt.m._bx_Body_GetLocalPointVelocity(
+      this.slot,
+      point.x,
+      point.y,
+      point.z,
+    );
+    return this.rt.scratchVec3(out);
+  }
+
+  getSafetyFactor(): number {
+    this.assertAlive('body');
+    return this.rt.m._bx_Body_GetSafetyFactor(this.slot);
+  }
+
+  setSafetyFactor(factor: number): void {
+    this.assertAlive('body');
+    this.rt.m._bx_Body_SetSafetyFactor(this.slot, factor);
+  }
+
+  enableContactRecycling(flag: boolean): void {
+    this.assertAlive('body');
+    this.rt.m._bx_Body_EnableContactRecycling(this.slot, flag ? 1 : 0);
+  }
+
+  isContactRecyclingEnabled(): boolean {
+    this.assertAlive('body');
+    return this.rt.m._bx_Body_IsContactRecyclingEnabled(this.slot) !== 0;
+  }
+
+  /** Enables or disables hit events on every shape of the body. */
+  enableHitEvents(flag: boolean): void {
+    this.assertAlive('body');
+    this.rt.m._bx_Body_EnableHitEvents(this.slot, flag ? 1 : 0);
+  }
+
+  /** Distance from `target` to the body's closest point; the point goes into `outPoint`. */
+  getClosestPoint(target: Vec3, outPoint: Vec3 = vec3()): number {
+    this.assertAlive('body');
+    const distance = this.rt.m._bx_Body_GetClosestPoint(
+      this.slot,
+      target.x,
+      target.y,
+      target.z,
+    );
+    this.rt.scratchVec3(outPoint);
+    return distance;
+  }
+
+  private readMat3(out: Mat3): Mat3 {
+    this.rt.scratchVec3(out.cx, 0);
+    this.rt.scratchVec3(out.cy, 3);
+    this.rt.scratchVec3(out.cz, 6);
+    return out;
   }
 
   getName(): string {
@@ -482,17 +816,19 @@ export class Body extends Handle {
 
   /** Axes left out keep their current lock. */
   setMotionLocks(locks: MotionLocks): void {
-    const current = this.getMotionLocks();
-    const pick = (next: boolean | undefined, now: boolean): number =>
-      (next ?? now) ? 1 : 0;
-    this.rt.m._bx_Body_SetMotionLocks(
+    this.assertAlive('body');
+    const rt = this.rt;
+    rt.m._bx_Body_GetMotionLocks(this.slot);
+    const pick = (next: boolean | undefined, at: number): number =>
+      (next ?? rt.scratchI(at) !== 0) ? 1 : 0;
+    rt.m._bx_Body_SetMotionLocks(
       this.slot,
-      pick(locks.linearX, current.linearX),
-      pick(locks.linearY, current.linearY),
-      pick(locks.linearZ, current.linearZ),
-      pick(locks.angularX, current.angularX),
-      pick(locks.angularY, current.angularY),
-      pick(locks.angularZ, current.angularZ),
+      pick(locks.linearX, 0),
+      pick(locks.linearY, 1),
+      pick(locks.linearZ, 2),
+      pick(locks.angularX, 3),
+      pick(locks.angularY, 4),
+      pick(locks.angularZ, 5),
     );
   }
 
@@ -586,15 +922,93 @@ export class Body extends Handle {
   createHull(options: HullOptions): Shape {
     this.assertAlive('body');
     const flat = flatPoints(options.points);
+    if (flat.length % 3 !== 0 || flat.length < 12) {
+      throw new RangeError('box3d: a hull needs at least four 3D points');
+    }
+    const maxVertices = options.maxVertices ?? 32;
+    if (
+      !Number.isInteger(maxVertices) ||
+      maxVertices < 4 ||
+      maxVertices > 128
+    ) {
+      throw new RangeError(
+        'box3d: maxVertices must be an integer from 4 to 128',
+      );
+    }
     stageShapeDef(this.rt, options);
     const ptr = this.rt.arena.uploadF32(flat);
     const slot = this.rt.m._bx_CreateHullShape(
       this.slot,
       ptr,
       flat.length / 3,
-      options.maxVertices ?? 32,
+      maxVertices,
     );
     return this.adopt(slot, 'hull');
+  }
+
+  /** Attaches a mesh. Meshes only collide on static bodies. The mesh must stay valid; it is freed after its last shape. */
+  createMesh(mesh: Mesh, options: MeshShapeOptions = {}): Shape {
+    this.assertAlive('body');
+    if (!mesh.alive) throw new Error('box3d: mesh was released');
+    stageShapeDef(this.rt, options);
+    const scale = options.scale ?? { x: 1, y: 1, z: 1 };
+    const slot = this.rt.m._bx_CreateMeshShape(
+      this.slot,
+      mesh.slot,
+      scale.x,
+      scale.y,
+      scale.z,
+    );
+    return this.adopt(slot, 'mesh');
+  }
+
+  /** Attaches a prebuilt hull (see b3.createCylinder and friends), optionally placed and scaled. */
+  createHullData(hull: Hull, options: HullShapeOptions = {}): Shape {
+    this.assertAlive('body');
+    if (!hull.alive) throw new Error('box3d: hull was released');
+    stageShapeDef(this.rt, options);
+    const p = options.position ?? { x: 0, y: 0, z: 0 };
+    const q = options.rotation ?? { x: 0, y: 0, z: 0, w: 1 };
+    const sc = options.scale ?? { x: 1, y: 1, z: 1 };
+    const slot = this.rt.m._bx_CreateHullDataShape(
+      this.slot,
+      hull.slot,
+      p.x,
+      p.y,
+      p.z,
+      q.x,
+      q.y,
+      q.z,
+      q.w,
+      sc.x,
+      sc.y,
+      sc.z,
+    );
+    return this.adopt(slot, 'hull');
+  }
+
+  /** Attaches a baked compound. Compounds are only allowed on static bodies. */
+  createCompound(compound: Compound, options: ShapeOptions = {}): Shape {
+    this.assertAlive('body');
+    if (!compound.alive) throw new Error('box3d: compound was released');
+    stageShapeDef(this.rt, options);
+    const slot = this.rt.m._bx_CreateCompoundShape(this.slot, compound.slot);
+    return this.adopt(slot, 'compound');
+  }
+
+  /** Attaches a terrain. Height fields only collide on static bodies. */
+  createHeightField(
+    heightField: HeightField,
+    options: ShapeOptions = {},
+  ): Shape {
+    this.assertAlive('body');
+    if (!heightField.alive) throw new Error('box3d: height field was released');
+    stageShapeDef(this.rt, options);
+    const slot = this.rt.m._bx_CreateHeightFieldShape(
+      this.slot,
+      heightField.slot,
+    );
+    return this.adopt(slot, 'height field');
   }
 
   private adopt(slot: number, kind: string): Shape {
