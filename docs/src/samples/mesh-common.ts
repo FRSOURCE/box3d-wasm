@@ -43,10 +43,9 @@ export const fmtG = (value: number): string =>
 
 /** URL of a file under docs/public, honouring the site's base path. */
 export function assetUrl(path: string): string {
-  const meta = import.meta as ImportMeta & {
-    env?: { BASE_URL?: string };
-  };
-  return `${meta.env?.BASE_URL ?? '/'}${path}`;
+  // headless (node) runs have no vite env, so fall back to the root
+  const base = (import.meta.env as { BASE_URL?: string } | undefined)?.BASE_URL;
+  return `${base ?? '/'}${path}`;
 }
 
 /** Fetches a text asset; undefined when it cannot be loaded (headless runs, offline). */
