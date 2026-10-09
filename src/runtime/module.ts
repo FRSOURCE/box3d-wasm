@@ -3,6 +3,8 @@
 // registries that map event records back to the objects that own them.
 import type { Body } from '../body.js';
 import type { Joint } from '../joints.js';
+import type { PlaneList } from '../mover.js';
+import type { ContactList, ShapeList } from '../queries.js';
 import type { Shape } from '../shape.js';
 import type { Quat, Vec3 } from '../types.js';
 import type { MainModule } from '../wasm/box3d.standard.js';
@@ -20,6 +22,8 @@ export class Mem {
   i32: Int32Array;
   u32: Uint32Array;
   u8: Uint8Array;
+  /** Bumps every time wasm memory grows and the views are rebuilt. */
+  generation = 0;
   private buffer: ArrayBufferLike;
 
   constructor(private readonly memory: WebAssembly.Memory) {
@@ -34,6 +38,7 @@ export class Mem {
     const buffer = this.memory.buffer;
     if (buffer !== this.buffer) {
       this.buffer = buffer;
+      this.generation += 1;
       this.f32 = new Float32Array(buffer);
       this.i32 = new Int32Array(buffer);
       this.u32 = new Uint32Array(buffer);
@@ -87,6 +92,12 @@ export class Runtime {
   readonly bodies: (Body | undefined)[] = [];
   readonly shapes: (Shape | undefined)[] = [];
   readonly joints: (Joint | undefined)[] = [];
+  /** @internal lazily created shared reader for getContacts */
+  contacts: ContactList | undefined;
+  /** @internal lazily created shared reader for mover planes */
+  planes: PlaneList | undefined;
+  /** @internal lazily created shared reader for sensor overlaps */
+  sensorOverlaps: ShapeList | undefined;
 
   constructor(
     readonly m: WasmModule,

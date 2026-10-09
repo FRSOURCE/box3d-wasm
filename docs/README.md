@@ -4,8 +4,9 @@ A three.js showcase of [`@frsource/box3d-wasm`](..), deployed to
 [frsource.github.io/box3d-wasm](https://frsource.github.io/box3d-wasm/) from `main` by
 `.github/workflows/pages.yml`. On GitHub Pages it runs the threaded (`deluxe`) build by registering
 `public/coi-serviceworker.js`, which adds the cross-origin isolation headers the host cannot send, and falls
-back to the single-threaded build when that is not possible. The classic scenes are adapted from
-[monteslu/threejs-box3d-demo](https://github.com/monteslu/threejs-box3d-demo); the service worker follows
+back to the single-threaded build when that is not possible. It is a sample browser modelled on the upstream
+Box3D samples app (`src/framework` is the framework, `src/samples` the ported samples, `parity/samples.json`
+tracks which upstream samples are ported); the service worker follows
 [pryme8's babylon-box3d demo](https://github.com/pryme8/babylon-box3d).
 
 ## Running locally
@@ -20,7 +21,7 @@ pnpm build                                   # the library, into ../dist
 pnpm --filter @frsource/box3d-wasm-demo dev  # or: pnpm dev, from the root
 ```
 
-`?scene=<key>` starts on a scene, `?threads=0` forces the single-threaded build, `?threads=N` picks the
+`?sample=Category/Name` starts on a sample, `?threads=0` forces the single-threaded build, `?threads=N` picks the
 worker count and `?ff=600` fast-forwards steps before the first frame.
 
 ## Commits

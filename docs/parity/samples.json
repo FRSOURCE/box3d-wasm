@@ -1,0 +1,930 @@
+{
+  "comment": "Every sample the upstream native demo registers (grep RegisterSample in box3d/samples). status: ported | todo | skip:<reason>. Keep in sync with docs/src/samples.",
+  "samples": [
+    {
+      "category": "Benchmark",
+      "name": "Large Pyramid",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Wide Pyramid",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Many Pyramids",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Rain",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Large World",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported",
+      "note": "registered twice upstream"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Joint Grid",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Falling Boxes",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Candy Cups",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Explosion",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Height Field",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Falling Trees",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Sensor",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Washer",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Hull",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Chains",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Destruction",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Benchmark",
+      "name": "Junkyard",
+      "source": "samples/sample_benchmark.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Bodies",
+      "name": "Body Type",
+      "source": "samples/sample_bodies.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Bodies",
+      "name": "Spinning Book",
+      "source": "samples/sample_bodies.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Bodies",
+      "name": "Gyroscopic Torque",
+      "source": "samples/sample_bodies.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Bodies",
+      "name": "Gyroscopic Precession",
+      "source": "samples/sample_bodies.cpp",
+      "status": "skip:compiled out upstream (#if 0)"
+    },
+    {
+      "category": "Bodies",
+      "name": "Weeble",
+      "source": "samples/sample_bodies.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Bodies",
+      "name": "Disable",
+      "source": "samples/sample_bodies.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Bodies",
+      "name": "Cast",
+      "source": "samples/sample_bodies.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Bodies",
+      "name": "Kinematic",
+      "source": "samples/sample_bodies.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Bodies",
+      "name": "Lock Mixing",
+      "source": "samples/sample_bodies.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Bodies",
+      "name": "Fixed Rotation",
+      "source": "samples/sample_bodies.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Character",
+      "name": "CapsulePlane",
+      "source": "samples/sample_character.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Character",
+      "name": "MoverOverlap",
+      "source": "samples/sample_character.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Character",
+      "name": "Mover",
+      "source": "samples/sample_character.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Character",
+      "name": "Rigid Body",
+      "source": "samples/sample_character.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Collision",
+      "name": "Ray Curtain",
+      "source": "samples/sample_collision.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Collision",
+      "name": "Cast World",
+      "source": "samples/sample_collision.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Collision",
+      "name": "Mesh Scale",
+      "source": "samples/sample_collision.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Collision",
+      "name": "Shape Cast",
+      "source": "samples/sample_collision.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Collision",
+      "name": "Overlap World",
+      "source": "samples/sample_collision.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Collision",
+      "name": "Long Ray Cast",
+      "source": "samples/sample_collision.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Collision",
+      "name": "Initial Overlap",
+      "source": "samples/sample_collision.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Collision",
+      "name": "Shape Cast Debug",
+      "source": "samples/sample_collision.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Collision",
+      "name": "Distance Debug",
+      "source": "samples/sample_collision.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Collision",
+      "name": "Shape Distance",
+      "source": "samples/sample_collision.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Collision",
+      "name": "Time of Impact",
+      "source": "samples/sample_collision.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Collision",
+      "name": "Capsule Cast Ray",
+      "source": "samples/sample_collision.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Compound",
+      "name": "Simple",
+      "source": "samples/sample_compound.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Compound",
+      "name": "Spheres",
+      "source": "samples/sample_compound.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Compound",
+      "name": "Hulls",
+      "source": "samples/sample_compound.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Compound",
+      "name": "Tile Floor",
+      "source": "samples/sample_compound.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Compound",
+      "name": "Mesh Tile",
+      "source": "samples/sample_compound.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Compound",
+      "name": "Village",
+      "source": "samples/sample_compound.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Continuous",
+      "name": "Thin Wall",
+      "source": "samples/sample_continuous.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Continuous",
+      "name": "Bounce House",
+      "source": "samples/sample_continuous.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Continuous",
+      "name": "Spinning Stick",
+      "source": "samples/sample_continuous.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Continuous",
+      "name": "Bullet vs Stack",
+      "source": "samples/sample_continuous.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Continuous",
+      "name": "Needle Mesh",
+      "source": "samples/sample_continuous.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Continuous",
+      "name": "Mesh Drop",
+      "source": "samples/sample_continuous.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Continuous",
+      "name": "Mesh Drop Unit Test",
+      "source": "samples/sample_continuous.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Continuous",
+      "name": "Hump Mesh",
+      "source": "samples/sample_continuous.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Continuous",
+      "name": "Is Fast",
+      "source": "samples/sample_continuous.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Continuous",
+      "name": "Stall",
+      "source": "samples/sample_continuous.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Determinism",
+      "name": "Falling Ragdolls",
+      "source": "samples/sample_determinism.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Events",
+      "name": "Sensor Visit",
+      "source": "samples/sample_events.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Events",
+      "name": "Hit",
+      "source": "samples/sample_events.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Events",
+      "name": "Move",
+      "source": "samples/sample_events.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Events",
+      "name": "Joint",
+      "source": "samples/sample_events.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Events",
+      "name": "Persistent Contact",
+      "source": "samples/sample_events.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Events",
+      "name": "Sensor Hits",
+      "source": "samples/sample_events.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Geometry",
+      "name": "Box Hull",
+      "source": "samples/sample_geometry.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Geometry",
+      "name": "Hull",
+      "source": "samples/sample_geometry.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Geometry",
+      "name": "Hull Reduction",
+      "source": "samples/sample_geometry.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Geometry",
+      "name": "Hull Transform",
+      "source": "samples/sample_geometry.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Geometry",
+      "name": "Capsule Mass",
+      "source": "samples/sample_geometry.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Issues",
+      "name": "Dump Loader",
+      "source": "samples/sample_issues.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Issues",
+      "name": "Crash",
+      "source": "samples/sample_issues.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Issues",
+      "name": "Multiple Prismatic",
+      "source": "samples/sample_issues.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Issues",
+      "name": "Hull Crash",
+      "source": "samples/sample_issues.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Issues",
+      "name": "Convex Jitter",
+      "source": "samples/sample_issues.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Issues",
+      "name": "s&box mover",
+      "source": "samples/sample_issues.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Issues",
+      "name": "Capsule Mesh",
+      "source": "samples/sample_issues.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Issues",
+      "name": "s&box Ghost Collisions",
+      "source": "samples/sample_issues.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Distance Joint",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Filter",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Motor Joint",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Top Down Friction",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Prismatic",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Spherical",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Parallel Spring",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Revolute",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Weld",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Wheel",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Ball and Chain",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Door",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Bridge",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Motion Locks",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Driving",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Joints",
+      "name": "Gear Lift",
+      "source": "samples/sample_joint.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Manifold",
+      "name": "Sphere vs Sphere",
+      "source": "samples/sample_manifold.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Manifold",
+      "name": "Capsule vs Sphere",
+      "source": "samples/sample_manifold.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Manifold",
+      "name": "Hull vs Sphere",
+      "source": "samples/sample_manifold.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Manifold",
+      "name": "Triangle vs Sphere",
+      "source": "samples/sample_manifold.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Manifold",
+      "name": "Capsule vs Capsule",
+      "source": "samples/sample_manifold.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Manifold",
+      "name": "Capsule vs Hull",
+      "source": "samples/sample_manifold.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Manifold",
+      "name": "Triangle vs Capsule",
+      "source": "samples/sample_manifold.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Manifold",
+      "name": "Hull vs Hull",
+      "source": "samples/sample_manifold.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Manifold",
+      "name": "Triangle vs Hull",
+      "source": "samples/sample_manifold.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Mesh",
+      "name": "Grid",
+      "source": "samples/sample_mesh.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Mesh",
+      "name": "Big Box",
+      "source": "samples/sample_mesh.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Mesh",
+      "name": "Box",
+      "source": "samples/sample_mesh.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Mesh",
+      "name": "Reflection",
+      "source": "samples/sample_mesh.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Mesh",
+      "name": "Height Field",
+      "source": "samples/sample_mesh.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Mesh",
+      "name": "Viewer",
+      "source": "samples/sample_mesh.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Mesh",
+      "name": "Creation Benchmark",
+      "source": "samples/sample_mesh.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Mesh",
+      "name": "Voxel",
+      "source": "samples/sample_mesh.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Mesh",
+      "name": "Hollow Box",
+      "source": "samples/sample_mesh.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Ragdoll",
+      "name": "Box",
+      "source": "samples/sample_ragdoll.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Ragdoll",
+      "name": "Mesh",
+      "source": "samples/sample_ragdoll.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Ragdoll",
+      "name": "Pile",
+      "source": "samples/sample_ragdoll.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Ragdoll",
+      "name": "Incline",
+      "source": "samples/sample_ragdoll.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Ragdoll",
+      "name": "Pose",
+      "source": "samples/sample_ragdoll.cpp",
+      "status": "skip:disabled upstream (#if 0) and needs a Human pose-control API that no longer exists"
+    },
+    {
+      "category": "Replay",
+      "name": "Viewer",
+      "source": "samples/sample_replay.cpp",
+      "status": "skip:needs the native .b3rec recording player"
+    },
+    {
+      "category": "Robustness",
+      "name": "HighMassRatio1",
+      "source": "samples/sample_robustness.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Robustness",
+      "name": "Tiny Pyramid",
+      "source": "samples/sample_robustness.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Robustness",
+      "name": "Overlap Recovery",
+      "source": "samples/sample_robustness.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Robustness",
+      "name": "Overflow Color Pile",
+      "source": "samples/sample_robustness.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Shapes",
+      "name": "Inclined Plane",
+      "source": "samples/sample_shapes.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Shapes",
+      "name": "Rolling Resistance",
+      "source": "samples/sample_shapes.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Shapes",
+      "name": "High Resistance",
+      "source": "samples/sample_shapes.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Shapes",
+      "name": "Isotropic Friction",
+      "source": "samples/sample_shapes.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Shapes",
+      "name": "Slide Twist",
+      "source": "samples/sample_shapes.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Shapes",
+      "name": "Restitution",
+      "source": "samples/sample_shapes.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Shapes",
+      "name": "Static Invoke",
+      "source": "samples/sample_shapes.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Shapes",
+      "name": "Conveyor Belt",
+      "source": "samples/sample_shapes.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Shapes",
+      "name": "Conveyor Mesh",
+      "source": "samples/sample_shapes.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Shapes",
+      "name": "Wind",
+      "source": "samples/sample_shapes.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Shapes",
+      "name": "Wind Drop",
+      "source": "samples/sample_shapes.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Shapes",
+      "name": "Wind Flap",
+      "source": "samples/sample_shapes.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Stacking",
+      "name": "Card House Thick",
+      "source": "samples/sample_stacking.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Stacking",
+      "name": "Card House",
+      "source": "samples/sample_stacking.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Stacking",
+      "name": "Sphere Stack",
+      "source": "samples/sample_stacking.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Stacking",
+      "name": "Capsule Stack",
+      "source": "samples/sample_stacking.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Stacking",
+      "name": "Single Box",
+      "source": "samples/sample_stacking.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Stacking",
+      "name": "Cylinder",
+      "source": "samples/sample_stacking.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Stacking",
+      "name": "Cylinder Stack",
+      "source": "samples/sample_stacking.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Stacking",
+      "name": "Box Stack",
+      "source": "samples/sample_stacking.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Stacking",
+      "name": "Jenga Stack",
+      "source": "samples/sample_stacking.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Stacking",
+      "name": "Dominoes",
+      "source": "samples/sample_stacking.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Stacking",
+      "name": "Wedge",
+      "source": "samples/sample_stacking.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Stacking",
+      "name": "Arch",
+      "source": "samples/sample_stacking.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Stacking",
+      "name": "Double Domino",
+      "source": "samples/sample_stacking.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Stacking",
+      "name": "Pyramid2D",
+      "source": "samples/sample_stacking.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "Tree",
+      "name": "Benchmark",
+      "source": "samples/sample_tree.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "World",
+      "name": "Far Stack",
+      "source": "samples/sample_world.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "World",
+      "name": "Far Pyramid",
+      "source": "samples/sample_world.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "World",
+      "name": "Far Ragdolls",
+      "source": "samples/sample_world.cpp",
+      "status": "ported"
+    },
+    {
+      "category": "World",
+      "name": "Far Mesh Drop",
+      "source": "samples/sample_world.cpp",
+      "status": "ported"
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 // Bodies: creation from the def buffer, transforms, velocities, forces, mass, flags.
 #include "bx.h"
 
+#include <stdlib.h>
+
 #define BX_BODY( slot )                                                                                                          \
 	b3BodyId bodyId = bxBodyId( slot );                                                                                          \
 	if ( B3_IS_NULL( bodyId ) )                                                                                                  \
@@ -24,7 +26,7 @@ static b3Vec3 bxVec3( float x, float y, float z )
 static b3Quat bxQuat( float x, float y, float z, float w )
 {
 	b3Quat q = { { x, y, z }, w };
-	return b3NormalizeQuat( q );
+	return b3IsNormalizedQuat( q ) ? q : b3NormalizeQuat( q );
 }
 
 /// Writes b3DefaultBodyDef into the def buffer.
@@ -112,25 +114,32 @@ BX_EXPORT void bx_DestroyBody( int slot )
 	{
 		return;
 	}
-	for ( int i = 1; i < bx_joints.count; ++i )
+	// Ask the engine for this body's joints and shapes instead of scanning the
+	// global tables (O(1) in the number of other bodies). Each object's userData
+	// is its slot.
+	if ( b3Body_IsValid( body->id ) )
 	{
-		bxJoint* joint = bxTable_Get( &bx_joints, i );
-		if ( joint->alive && b3Joint_IsValid( joint->id ) )
+		int jointCount = b3Body_GetJointCount( body->id );
+		if ( jointCount > 0 )
 		{
-			b3BodyId a = b3Joint_GetBodyA( joint->id );
-			b3BodyId b = b3Joint_GetBodyB( joint->id );
-			if ( B3_ID_EQUALS( a, body->id ) || B3_ID_EQUALS( b, body->id ) )
+			b3JointId* joints = (b3JointId*)malloc( (size_t)jointCount * sizeof( b3JointId ) );
+			int n = b3Body_GetJoints( body->id, joints, jointCount );
+			for ( int i = 0; i < n; ++i )
 			{
-				bxTable_Free( &bx_joints, i );
+				bxTable_Free( &bx_joints, bxJointSlotOf( joints[i] ) );
 			}
+			free( joints );
 		}
-	}
-	for ( int i = 1; i < bx_shapes.count; ++i )
-	{
-		bxShape* shape = bxTable_Get( &bx_shapes, i );
-		if ( shape->alive && shape->body == slot )
+		int shapeCount = b3Body_GetShapeCount( body->id );
+		if ( shapeCount > 0 )
 		{
-			bxTable_Free( &bx_shapes, i );
+			b3ShapeId* shapes = (b3ShapeId*)malloc( (size_t)shapeCount * sizeof( b3ShapeId ) );
+			int n = b3Body_GetShapes( body->id, shapes, shapeCount );
+			for ( int i = 0; i < n; ++i )
+			{
+				bxShapeSlotFree( bxShapeSlotOf( shapes[i] ) );
+			}
+			free( shapes );
 		}
 	}
 	if ( b3Body_IsValid( body->id ) )
@@ -503,4 +512,48 @@ BX_EXPORT void bx_Body_ComputeAABB( int slot )
 	b3AABB aabb = b3Body_ComputeAABB( bodyId );
 	bxScratchVec3( 0, aabb.lowerBound );
 	bxScratchVec3( 3, aabb.upperBound );
+}
+
+/// Bulk transform read. out holds 7 floats per slot: position xyz, rotation xyzw.
+/// A slot that is not a live body leaves its record untouched. Returns the number of records written.
+BX_EXPORT int bx_Bodies_GetTransforms( const int* slots, int count, float* out )
+{
+	int written = 0;
+	for ( int i = 0; i < count; ++i )
+	{
+		bxBody* body = bxTable_Get( &bx_bodies, slots[i] );
+		if ( body == NULL || body->alive == 0 )
+		{
+			continue;
+		}
+		b3WorldTransform xf = b3Body_GetTransform( body->id );
+		float* record = out + 7 * i;
+		record[0] = xf.p.x;
+		record[1] = xf.p.y;
+		record[2] = xf.p.z;
+		record[3] = xf.q.v.x;
+		record[4] = xf.q.v.y;
+		record[5] = xf.q.v.z;
+		record[6] = xf.q.s;
+		written += 1;
+	}
+	return written;
+}
+
+/// Bulk teleport. Same record layout as bx_Bodies_GetTransforms. Dead slots are skipped.
+BX_EXPORT int bx_Bodies_SetTransforms( const int* slots, int count, const float* in )
+{
+	int written = 0;
+	for ( int i = 0; i < count; ++i )
+	{
+		bxBody* body = bxTable_Get( &bx_bodies, slots[i] );
+		if ( body == NULL || body->alive == 0 )
+		{
+			continue;
+		}
+		const float* r = in + 7 * i;
+		b3Body_SetTransform( body->id, bxVec3( r[0], r[1], r[2] ), bxQuat( r[3], r[4], r[5], r[6] ) );
+		written += 1;
+	}
+	return written;
 }

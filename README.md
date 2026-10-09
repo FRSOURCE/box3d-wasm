@@ -43,7 +43,7 @@
 
 Box3D is a 3D rigid body physics engine written by [Erin Catto](https://github.com/erincatto), the author of Box2D. All engine design and implementation credit belongs to him; this package compiles his library to wasm and adds a JavaScript binding layer.
 
-This is a fork of [monteslu/box3d-wasm](https://github.com/monteslu/box3d-wasm) published under the `@frsource` npm scope. It is where the bindings needed by [`@frsource/babylon-box3d`](https://github.com/FRSOURCE/babylon-box3d) are added. See it in action in the [live three.js demo](https://frsource.github.io/box3d-wasm/) ([source](docs/)) with ragdolls, dominoes, a drivable buggy, terrain, a multithreaded stress test and a joint gallery. The classic scenes are adapted from [monteslu's threejs-box3d-demo](https://github.com/monteslu/threejs-box3d-demo).
+This is a fork of [monteslu/box3d-wasm](https://github.com/monteslu/box3d-wasm) published under the `@frsource` npm scope. It is where the bindings needed by [`@frsource/babylon-box3d`](https://github.com/FRSOURCE/babylon-box3d) are added. See it in action in the [live three.js demo](https://frsource.github.io/box3d-wasm/) ([source](docs/)), a port of the upstream Box3D samples app.
 
 ## Quick start
 
@@ -143,14 +143,60 @@ pnpm build                                   # the demo links the library from d
 pnpm --filter @frsource/box3d-wasm-demo dev  # or: pnpm dev
 ```
 
-| URL parameter   | effect                                                                                                                                                 |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `?scene=stress` | start on a scene (`playground`, `pyramid`, `ragdolls`, `dominoes`, `bridge`, `driving`, `terrain`, `compound`, `stress`, `picking`, `casts`, `joints`) |
-| `?threads=0`    | force the single-threaded build                                                                                                                        |
-| `?threads=4`    | threaded build with four workers (clamped to `maxWorkers`)                                                                                             |
-| `?ff=600`       | fast-forward that many steps before the first frame                                                                                                    |
+| URL parameter                  | effect                                                                    |
+| ------------------------------ | ------------------------------------------------------------------------- |
+| `?sample=Stacking/Box%20Stack` | start on a sample, `Category/Name` (the picker and menus keep it in sync) |
+| `?threads=0`                   | force the single-threaded build                                           |
+| `?threads=4`                   | threaded build with four workers (clamped to `maxWorkers`)                |
+| `?ff=600`                      | fast-forward that many steps before the first frame                       |
 
-The threads toggle and worker slider in the bottom-left corner change the same parameters. The six classic scenes are adapted from [monteslu's threejs-box3d-demo](https://github.com/monteslu/threejs-box3d-demo); the cross-origin isolation service worker follows the approach from [pryme8's babylon-box3d demo](https://github.com/pryme8/babylon-box3d).
+The demo mirrors the native samples app in [`box3d/samples`](https://github.com/erincatto/box3d/tree/main/samples): a category menu, a fuzzy sample picker, a solver panel, mouse-joint grabbing, shooting, debug-draw toggles and a profile and counters drawer.
+
+| input                       | action                                                             |
+| --------------------------- | ------------------------------------------------------------------ |
+| `Ctrl+O`                    | fuzzy sample picker (`[` and `]` step through the list)            |
+| `P`, `O` (`Shift+O`), `R`   | pause, single step (5 steps), restart                              |
+| `Tab`, `M`, `?`             | hide the UI, diagnostics drawer (profile, counters), controls help |
+| `F`                         | frame the selection, or the whole world                            |
+| click                       | select a body (outlined)                                           |
+| `Ctrl` + drag               | grab a dynamic body with a kinematic mouse body and a motor joint  |
+| `Shift` + click             | shoot a sphere (`Ctrl`: spinning cylinder, `Alt`: ragdoll stub)    |
+| drag, scroll, `Alt` + mouse | orbit, zoom, pan: `Alt` with left, middle and right drags          |
+
+The View menu toggles the debug draw layers (`world.debugDraw()`: joints, bounds, contacts, normals, forces, islands, mass, sleep, graph colours). The Solver section of the info panel edits sub-steps, hertz, workers (deluxe build), contact recycling, sleeping, warm starting and continuous collision. The threads toggle sits there too. The cross-origin isolation service worker follows the approach from [pryme8's babylon-box3d demo](https://github.com/pryme8/babylon-box3d).
+
+### Adding a sample
+
+Samples live in `docs/src/samples/<category>.ts`, one file per upstream `sample_<category>.cpp` (the empty files are waiting to be filled), and are loaded by `docs/src/samples/index.ts`. A sample registers itself with `registerSample` and builds its world through the context, which also creates the matching three.js meshes:
+
+```ts
+import { registerSample } from '../framework/registry.js';
+
+registerSample({
+  category: 'Stacking',
+  name: 'Box Stack',
+  create(ctx) {
+    ctx.camera.setView(0, 15, 50, { x: 0, y: 20, z: 0 }); // yaw, pitch (deg), radius, pivot; skipped on restart
+    ctx.scene.groundBox(40); // upstream AddGroundBox
+    const body = ctx.scene.createBody({
+      type: 'dynamic',
+      position: { x: 0, y: 1, z: 0 },
+    });
+    ctx.scene.box(body, { hx: 0.5, hy: 0.5, hz: 0.5 });
+    return {
+      // all optional: setup, step(dt) (call ctx.stepWorld(dt)), keyboard, mouseDown/Move/Up,
+      // ui(panel), draw(canvas), hasSolverControls, destroy
+      ui(panel) {
+        panel.slider('Speed', 1, { min: 0, max: 10 }, (value) =>
+          ctx.world.setGravity({ x: 0, y: -value, z: 0 }),
+        );
+      },
+    };
+  },
+});
+```
+
+`ctx.scene` records every body and shape as plain data, so rendering stays out of the sample: a `TransformBatch` copies all poses out of wasm in one call per frame. Use `scene.createBody/destroyBody/setBodyType` rather than `world.createBody` and `body.destroy()` for anything that should have a mesh, and `scene.box/sphere/capsule/hull/cylinder/mesh/heightField` for shapes. Samples must not import `three` or touch the DOM, and should import the library only as types: that is what lets `test/demo.test.ts` run every registered sample headlessly (120 steps, finite positions, every panel control triggered, restart and pause). After porting, flip the sample's status from `todo` to `ported` in `docs/parity/samples.json`, which lists every sample of the upstream app; the test fails when the list and the registry disagree.
 
 ## API
 
@@ -307,9 +353,96 @@ if (hit.hit) {
   hit.shape; // Shape
   hit.body; // Body
 }
+
+// every hit nearest first ('all'), or 'closest' / 'any'
+const hits = world.castRay(origin, translation, filter, 'all');
+for (let i = 0; i < hits.count; i++) (hits.bodyAt(i), hits.fractionAt(i));
+
+// shape proxies: b3.proxy.sphere / capsule / box, or { points, radius }
+world.castShape(b3.proxy.sphere(0.3), origin, translation);
+world.overlapAABB(lower, upper).toArray(); // broad phase
+world.overlapShape(b3.proxy.box(vec3(1, 1, 1)), origin);
+
+// character mover: planes feed b3.solvePlanes / b3.clipVector
+const mover = {
+  center1: vec3(0, 0.5, 0),
+  center2: vec3(0, 1.5, 0),
+  radius: 0.5,
+};
+world.castMover(origin, mover, translation);
+const planes = world.collideMover(origin, mover).toCollisionPlanes();
+b3.solvePlanes(targetDelta, planes).delta;
 ```
 
-The result object belongs to the world and is overwritten by the next cast; copy what you keep. `shape.rayCast(origin, translation)` does the same against one shape.
+Result objects belong to the world (or runtime) and are overwritten by the next query; copy what you keep. `shape.rayCast(origin, translation)` casts against one shape, `body.castRay / castShape / overlapShape / collideMover / timeOfImpactMover` against one body.
+
+### Meshes, terrain, hulls and compounds
+
+Immutable collision data is built once and attached to many shapes; release it when you are done and it is freed after its last shape.
+
+```ts
+const mesh = b3.createMesh({ vertices, indices, identifyEdges: true });
+ground.createMesh(mesh, {
+  scale: vec3(2, 1, 2),
+  materials: [{ friction: 0.2 }],
+});
+mesh.release();
+
+const field = b3.createHeightField({
+  heights,
+  countX: 65,
+  countZ: 65,
+  scale: vec3(1, 8, 1),
+});
+ground.createHeightField(field);
+
+const cylinder = b3.createCylinder(2, 0.5); // also createCone, createRock, createHull(points), collision.createBoxHull
+body.createHullData(cylinder, { position, rotation, scale });
+
+const compound = b3.createCompound({
+  spheres,
+  capsules,
+  hulls: [{ hull: cylinder }],
+  meshes: [{ mesh }],
+});
+ground.createCompound(compound); // baked compounds are static only
+```
+
+`shape.getGeometry()` returns triangles for rendering a hull or mesh shape. Mesh builders: `createBoxMesh`, `createHollowBoxMesh`, `createPlatformMesh`, `createGridMesh`, `createWaveMesh`, `createTorusMesh`; terrain: `createGridHeightField`, `createWaveHeightField`.
+
+### Standalone collision
+
+`b3.collision` runs the engine's geometry routines on primitives without a world: `computeMass`, `computeAABB`, `rayCast`, `shapeCast`, `overlap`, `collide` (contact manifolds), `shapeDistance`, `shapeCastPair`, `timeOfImpact`, `getSweepTransform`, `queryTriangles`, plus a `QueryCache` for warm starting.
+
+### Contacts, sensors and callbacks
+
+```ts
+const contacts = body.getContacts(); // one record per manifold
+contacts.copyNormalTo(0, out);
+sensorShape.getSensorOverlaps().toArray();
+
+world.setCallbacks({
+  friction: (fa, idA, fb, idB) => Math.min(fa, fb),
+  customFilter: (a, b) => a.body !== b.body,
+  preSolve: (a, b, point, normal) => true,
+});
+```
+
+JS callbacks run inside the step, so a world with callbacks drops to one worker thread while any callback is set.
+
+### Debug draw and bulk transforms
+
+```ts
+const draw = world.debugDraw({ joints: true, bounds: true, contacts: true });
+draw.lines; // Float32Array: x1 y1 z1 x2 y2 z2 colour, `LINE_STRIDE` (7) floats per line
+draw.points; // x y z size colour
+
+const batch = world.createTransformBatch(bodies); // one wasm call for many bodies
+batch.read(); // wasm -> batch.data: px py pz qx qy qz qw per body
+batch.write(); // batch.data -> wasm (teleport)
+```
+
+Typed-array views into wasm memory are rebuilt when memory grows; read `batch.data` again after anything that can allocate (stepping, creating bodies).
 
 ### Events
 
@@ -338,7 +471,9 @@ pnpm install       # also fetches the pinned Box3D source (the @erincatto/box3d 
 pnpm build         # both wasm flavours (csrc -> src/wasm) and the TypeScript frontend into dist/
 pnpm test          # vitest, every suite against both flavours, plus the type tests
 pnpm typecheck     # tsc over src, tests and bench
-pnpm bench         # step, move-event sync and ray cast timings; pass deluxe 4 for threads
+pnpm bench         # step, sync, query, create/destroy timings; pass deluxe 4 for threads, --json for JSON
+pnpm parity:update # refresh parity/manifest.json after reviewing an engine bump
+pnpm parity:strict # fail while any todo: remains in the manifest
 pnpm dev           # three.js demo at http://localhost:5173/box3d-wasm/
 pnpm lint          # eslint + prettier + clang-format
 pnpm fix           # auto-fixes what the linters can
@@ -349,6 +484,14 @@ Commits follow the [Angular convention](https://github.com/angular/angular/blob/
 ### Tracking Box3D
 
 Box3D is pinned as a git dependency in `package.json` (`@erincatto/box3d`: `github:erincatto/box3d#<commit>`). Renovate opens a pull request whenever Box3D's `main` moves; CI rebuilds both flavours and runs the tests against the new commit, and a green build is merged and released automatically. A Box3D change that breaks the binding fails CI and waits for a fix in `csrc/`.
+
+**Parity gate.** Compiling is not enough to know the binding still covers the engine, so `test/parity.test.ts` compares the pinned headers with `parity/manifest.json`: every `B3_API` function must be wrapped by the shim or listed with a `skip:` reason, every `*Def` struct field must be mapped or recorded, and enum, struct and constant snapshots must match. The hardcoded enum maps (`SHAPE_TYPES`, `JOINT_TYPES`, `BODY_TYPES`) and the profile layout are checked against the headers too. New upstream API therefore turns CI red (and blocks the automerge) until it is wrapped or consciously skipped. `pnpm parity:strict` additionally fails while any `todo:` reason remains. A weekly workflow (`upstream-drift`) runs the gate against Box3D's latest commit and opens an issue listing what changed.
+
+To update the engine, use the `update-box3d` skill (`.claude/skills/update-box3d`), or follow it by hand: bump the pin, run the gate, wrap or skip each new symbol, fix the enum maps and layouts, run `pnpm parity:update`, then build, test and bench.
+
+### Performance notes
+
+`pnpm bench` reports step, bulk sync, query, create/destroy and kinematic sync timings (`--json` for machine output). The default build is `-O3` with SIMD and no LTO. `LTO_FLAGS=-flto pnpm build` trades about 24% more wasm for roughly 2-5% faster stepping and 15-20% faster overlap queries. Hot paths (`castRayClosest`, filters, motion locks, event readers, `TransformBatch`) allocate nothing per call.
 
 ## Questions
 

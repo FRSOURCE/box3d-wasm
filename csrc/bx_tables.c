@@ -4,10 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-bxTable bx_worlds = { NULL, sizeof( bxWorld ), 0, 0, NULL, 0 };
-bxTable bx_bodies = { NULL, sizeof( bxBody ), 0, 0, NULL, 0 };
-bxTable bx_shapes = { NULL, sizeof( bxShape ), 0, 0, NULL, 0 };
-bxTable bx_joints = { NULL, sizeof( bxJoint ), 0, 0, NULL, 0 };
+bxTable bx_worlds = { NULL, sizeof( bxWorld ), 0, 0, NULL, 0, NULL };
+bxTable bx_bodies = { NULL, sizeof( bxBody ), 0, 0, NULL, 0, NULL };
+bxTable bx_shapes = { NULL, sizeof( bxShape ), 0, 0, NULL, 0, NULL };
+bxTable bx_joints = { NULL, sizeof( bxJoint ), 0, 0, NULL, 0, NULL };
+
+bxTable bx_resources = { NULL, sizeof( bxResource ), 0, 0, NULL, 0, NULL };
 
 bxWord bx_scratch[BX_SCRATCH_WORDS];
 bxWord bx_def[BX_DEF_WORDS];
@@ -22,6 +24,7 @@ int bxTable_Alloc( bxTable* table )
 	{
 		table->freeCount -= 1;
 		int slot = table->freeList[table->freeCount];
+		table->used[slot] = 1;
 		memset( (char*)table->items + (size_t)slot * (size_t)table->itemSize, 0, (size_t)table->itemSize );
 		return slot;
 	}
@@ -35,20 +38,24 @@ int bxTable_Alloc( bxTable* table )
 		int capacity = table->capacity == 0 ? 64 : table->capacity * 2;
 		table->items = realloc( table->items, (size_t)capacity * (size_t)table->itemSize );
 		table->freeList = (int*)realloc( table->freeList, (size_t)capacity * sizeof( int ) );
+		table->used = (char*)realloc( table->used, (size_t)capacity );
+		memset( table->used + table->capacity, 0, (size_t)( capacity - table->capacity ) );
 		table->capacity = capacity;
 	}
 	int slot = table->count;
 	table->count += 1;
+	table->used[slot] = 1;
 	memset( (char*)table->items + (size_t)slot * (size_t)table->itemSize, 0, (size_t)table->itemSize );
 	return slot;
 }
 
 void bxTable_Free( bxTable* table, int slot )
 {
-	if ( slot <= 0 || slot >= table->count )
+	if ( slot <= 0 || slot >= table->count || table->used[slot] == 0 )
 	{
 		return;
 	}
+	table->used[slot] = 0;
 	memset( (char*)table->items + (size_t)slot * (size_t)table->itemSize, 0, (size_t)table->itemSize );
 	table->freeList[table->freeCount++] = slot;
 }
@@ -60,6 +67,62 @@ void* bxTable_Get( bxTable* table, int slot )
 		return NULL;
 	}
 	return (char*)table->items + (size_t)slot * (size_t)table->itemSize;
+}
+
+static void bxResourceFree( bxResource* resource, int slot )
+{
+	if ( resource->kind == BX_RESOURCE_MESH )
+	{
+		b3DestroyMesh( (b3MeshData*)resource->ptr );
+	}
+	else if ( resource->kind == BX_RESOURCE_HEIGHT_FIELD )
+	{
+		b3DestroyHeightField( (b3HeightFieldData*)resource->ptr );
+	}
+	else if ( resource->kind == BX_RESOURCE_HULL )
+	{
+		b3DestroyHull( (b3HullData*)resource->ptr );
+	}
+	else if ( resource->kind == BX_RESOURCE_COMPOUND )
+	{
+		b3DestroyCompound( (b3CompoundData*)resource->ptr );
+	}
+	bxTable_Free( &bx_resources, slot );
+}
+
+void bxShapeSlotFree( int slot )
+{
+	bxShape* shape = bxTable_Get( &bx_shapes, slot );
+	if ( shape == NULL )
+	{
+		return;
+	}
+	int resourceSlot = shape->resource;
+	bxTable_Free( &bx_shapes, slot );
+	bxResource* resource = bxTable_Get( &bx_resources, resourceSlot );
+	if ( resource != NULL && resource->alive )
+	{
+		resource->refs -= 1;
+		if ( resource->released && resource->refs <= 0 )
+		{
+			bxResourceFree( resource, resourceSlot );
+		}
+	}
+}
+
+/// Marks the resource as no longer wanted by JS. It is freed now, or when its last shape goes.
+BX_EXPORT void bx_Resource_Release( int slot )
+{
+	bxResource* resource = bxTable_Get( &bx_resources, slot );
+	if ( resource == NULL || resource->alive == 0 || resource->released )
+	{
+		return;
+	}
+	resource->released = 1;
+	if ( resource->refs <= 0 )
+	{
+		bxResourceFree( resource, slot );
+	}
 }
 
 b3WorldId bxWorldId( int slot )
@@ -201,7 +264,9 @@ b3Vec3 bxDefVec3( int at )
 b3Quat bxDefQuat( int at )
 {
 	b3Quat q = { { bx_def[at].f, bx_def[at + 1].f, bx_def[at + 2].f }, bx_def[at + 3].f };
-	return b3NormalizeQuat( q );
+	// Pass a unit quaternion through untouched (renormalizing one changes its low bits, which breaks bit-for-bit
+	// determinism against the C API). Only repair inputs that are visibly off.
+	return b3IsNormalizedQuat( q ) ? q : b3NormalizeQuat( q );
 }
 
 b3Transform bxDefTransform( int at )
